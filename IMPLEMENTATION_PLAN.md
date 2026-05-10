@@ -13,7 +13,8 @@ This plan translates the product vision in Claude.md into an execution roadmap w
 - Completed in Phase 3 hardening: intent-aware GraphRAG ranking over graph facts using relation intent and lexical relevance scoring
 - Completed in Phase 4 (backend foundation): JWT authentication with `/auth/register` and `/auth/login`, secure password hashing, and token issuance
 - Completed in Phase 4 hardening (backend): auth guards applied to protected endpoints and basic API rate limiting middleware
-- Current focus: Phase 4 hardening (async tasks, request tracing, and CI)
+- Completed in Phase 4 hardening (backend): Celery async document processing flow with Redis broker, worker service, and queue dispatch fallback
+- Current focus: Phase 4 hardening (request tracing and CI)
 
 ## 1) Scope and Delivery Strategy
 

@@ -41,6 +41,11 @@ class Settings(BaseSettings):
     rate_limit_requests: int = Field(default=120, ge=10, le=5000)
     rate_limit_window_seconds: int = Field(default=60, ge=10, le=3600)
 
+    celery_broker_url: str = "redis://redis:6379/0"
+    celery_result_backend: str = "redis://redis:6379/0"
+    celery_default_queue: str = "documents"
+    document_processing_use_celery: bool = True
+
     extraction_enable_spacy: bool = False
     extraction_spacy_model: str = "en_core_web_sm"
     extraction_enable_scibert: bool = False

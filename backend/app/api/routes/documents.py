@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -9,15 +7,14 @@ from app.api.schemas.documents import DocumentDetailResponse, DocumentUploadResp
 from app.core.config import get_settings
 from app.db.session import get_db
 from app.models import Chunk, Document, DocumentStatus, User
-from app.services.embedding_service import generate_embeddings
+from app.services.document_pipeline import process_document_ingestion
 from app.services.file_storage import save_pdf_bytes
-from app.services.pdf_extraction import extract_text_from_pdf
-from app.services.text_processing import clean_text, extract_title_from_text, split_text_into_chunks
+from app.tasks.dispatch import enqueue_document_processing
 
 router = APIRouter(prefix="/documents")
 
 
-@router.post("/upload", response_model=DocumentUploadResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/upload", response_model=DocumentUploadResponse, status_code=status.HTTP_202_ACCEPTED)
 async def upload_document(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
@@ -47,52 +44,24 @@ async def upload_document(
         status=DocumentStatus.processing.value,
     )
     db.add(document)
-    db.flush()
+    db.commit()
+    db.refresh(document)
 
-    try:
-        raw_text = extract_text_from_pdf(Path(saved_path))
-        cleaned = clean_text(raw_text)
-        chunks = split_text_into_chunks(
-            cleaned,
-            chunk_size=settings.chunk_size_tokens,
-            chunk_overlap=settings.chunk_overlap_tokens,
-        )
-
-        if not chunks:
-            document.status = DocumentStatus.failed.value
-            db.commit()
-            raise HTTPException(status_code=422, detail="No text chunks could be generated from this PDF.")
-
-        document.title = extract_title_from_text(cleaned)
-
-        embeddings = generate_embeddings(chunks)
-        chunk_rows = [
-            Chunk(
-                document_id=document.id,
-                chunk_index=index,
-                section="body",
-                content=chunk_text,
-                embedding=embeddings[index],
-            )
-            for index, chunk_text in enumerate(chunks)
-        ]
-        db.add_all(chunk_rows)
-
-        document.status = DocumentStatus.processed.value
-        db.commit()
+    queued = enqueue_document_processing(document.id)
+    if not queued:
+        # Safe fallback for local development or temporary queue outages.
+        process_document_ingestion(document.id, db)
         db.refresh(document)
-    except HTTPException:
-        raise
-    except Exception as exc:
-        document.status = DocumentStatus.failed.value
-        db.commit()
-        raise HTTPException(status_code=500, detail=f"Failed to process uploaded PDF: {exc}") from exc
+
+    chunk_count = db.scalar(select(func.count()).select_from(Chunk).where(Chunk.document_id == document.id))
+    if chunk_count is None:
+        chunk_count = 0
 
     return DocumentUploadResponse(
         document_id=document.id,
         status=document.status,
         title=document.title,
-        chunk_count=len(chunks),
+        chunk_count=int(chunk_count),
     )
 
 
