@@ -38,6 +38,10 @@ input {
   font: inherit;
 }
 
+textarea {
+  font: inherit;
+}
+
 .platform-page {
   min-height: 100vh;
   max-width: 1220px;
@@ -190,6 +194,7 @@ button:not(:disabled):active {
 }
 
 .auth-form,
+.chat-form,
 .stagger {
   display: grid;
   gap: 0.72rem;
@@ -210,7 +215,21 @@ input {
   background: rgba(255, 255, 255, 0.88);
 }
 
+textarea {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.62rem;
+  min-height: 122px;
+  resize: vertical;
+  background: rgba(255, 255, 255, 0.88);
+}
+
 input:focus {
+  outline: 2px solid rgba(26, 127, 118, 0.28);
+  border-color: rgba(26, 127, 118, 0.5);
+}
+
+textarea:focus {
   outline: 2px solid rgba(26, 127, 118, 0.28);
   border-color: rgba(26, 127, 118, 0.5);
 }
@@ -359,6 +378,12 @@ th {
   white-space: pre;
   line-height: 1.35;
   font-size: 0.82rem;
+}
+
+.answer-text {
+  margin: 0.7rem 0 0;
+  line-height: 1.6;
+  color: var(--text);
 }
 
 .fade-in {

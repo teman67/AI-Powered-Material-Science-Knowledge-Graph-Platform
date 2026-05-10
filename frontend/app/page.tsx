@@ -1,10 +1,10 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { PlatformShell } from "./components/platform-shell";
 import { useAuth } from "./components/auth-provider";
-import { DocumentDetailResponse, getDocument, uploadDocument } from "../lib/api";
+import { DocumentDetailResponse, getDocument, listDocuments, uploadDocument } from "../lib/api";
 
 function sortDocs(items: DocumentDetailResponse[]) {
   return [...items].sort((a, b) => b.id - a.id);
@@ -27,6 +27,16 @@ export default function Home() {
     return { total, processed, processing, failed, chunks };
   }, [docs]);
 
+  async function loadDocuments() {
+    if (!token) {
+      setDocs([]);
+      return;
+    }
+
+    const response = await listDocuments(150, token);
+    setDocs(sortDocs(response.items));
+  }
+
   async function refreshDocument(documentId: number) {
     if (!token) {
       return;
@@ -37,6 +47,16 @@ export default function Home() {
       return sortDocs([...withoutCurrent, detail]);
     });
   }
+
+  useEffect(() => {
+    if (!ready || !token) {
+      return;
+    }
+
+    loadDocuments().catch(() => {
+      setMessage("Could not load document list.");
+    });
+  }, [ready, token]);
 
   async function handleUpload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -49,7 +69,7 @@ export default function Home() {
     setMessage(null);
     try {
       const result = await uploadDocument(selectedFile, token);
-      await refreshDocument(result.document_id);
+      await loadDocuments();
       setSelectedFile(null);
       setMessage(`Uploaded document ${result.document_id} with status ${result.status}.`);
     } catch (error) {
@@ -157,7 +177,7 @@ export default function Home() {
                 }
                 setBusy(true);
                 try {
-                  await Promise.all(docs.map((doc) => refreshDocument(doc.id)));
+                  await loadDocuments();
                 } finally {
                   setBusy(false);
                 }

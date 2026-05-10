@@ -17,6 +17,8 @@ This plan translates the product vision in Claude.md into an execution roadmap w
 - Completed in Phase 4 hardening (backend): request tracing middleware with correlation IDs and structured request logs
 - Completed in Phase 4 hardening (devops): GitHub Actions backend CI workflow for dockerized pytest and image build validation
 - Completed in Phase 4 (frontend): dashboard, graph view, and RDF viewer pages wired to secured backend endpoints with session token flow
+- Completed in Phase 4 (frontend): secured chat page with semantic and graph citation contexts
+- Completed in Phase 4 (backend/frontend): authenticated documents listing endpoint and server-backed dashboard status table
 - Current focus: Phase 4 deployment hardening and monitoring expansion
 
 ## 1) Scope and Delivery Strategy

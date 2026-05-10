@@ -8,6 +8,7 @@ import { AuthPanel } from "./auth-panel";
 
 const links = [
   { href: "/", label: "Dashboard" },
+  { href: "/chat", label: "Chat" },
   { href: "/graph", label: "Graph View" },
   { href: "/rdf", label: "RDF Viewer" },
 ];

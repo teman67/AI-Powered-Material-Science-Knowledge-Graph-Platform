@@ -46,6 +46,10 @@ export type DocumentDetailResponse = {
   chunk_count: number;
 };
 
+export type DocumentListResponse = {
+  items: DocumentDetailResponse[];
+};
+
 export type GraphMaterialItem = {
   material: string;
   property_count: number;
@@ -73,6 +77,30 @@ export type RdfExportResponse = {
   entity_count: number;
   ttl_content: string;
   validation_report: string;
+};
+
+export type ChatQueryRequest = {
+  query: string;
+  top_k?: number;
+};
+
+export type ChatContext = {
+  chunk_id: number;
+  document_id: number;
+  score: number;
+  excerpt: string;
+};
+
+export type ChatGraphContext = {
+  source: string;
+  relation: string;
+  target: string;
+};
+
+export type ChatQueryResponse = {
+  answer: string;
+  contexts: ChatContext[];
+  graph_contexts: ChatGraphContext[];
 };
 
 async function requestJson<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -144,6 +172,10 @@ export function getDocument(documentId: number, token: string): Promise<Document
   return requestJson<DocumentDetailResponse>(`/documents/${documentId}`, { token });
 }
 
+export function listDocuments(limit: number, token: string): Promise<DocumentListResponse> {
+  return requestJson<DocumentListResponse>(`/documents?limit=${limit}`, { token });
+}
+
 export function getGraphMaterials(limit: number, token: string): Promise<GraphMaterialsResponse> {
   return requestJson<GraphMaterialsResponse>(`/graph/materials?limit=${limit}`, { token });
 }
@@ -158,4 +190,12 @@ export function getGraphRelations(limit: number, material: string | undefined, t
 
 export function exportRdf(documentId: number, token: string): Promise<RdfExportResponse> {
   return requestJson<RdfExportResponse>(`/rdf/export/${documentId}`, { token });
+}
+
+export function queryChat(payload: ChatQueryRequest, token: string): Promise<ChatQueryResponse> {
+  return requestJson<ChatQueryResponse>("/chat/query", {
+    method: "POST",
+    token,
+    body: payload,
+  });
 }

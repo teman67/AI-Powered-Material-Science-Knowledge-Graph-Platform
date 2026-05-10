@@ -17,3 +17,7 @@ class DocumentDetailResponse(BaseModel):
     file_path: str
     upload_date: datetime
     chunk_count: int
+
+
+class DocumentListResponse(BaseModel):
+    items: list[DocumentDetailResponse]

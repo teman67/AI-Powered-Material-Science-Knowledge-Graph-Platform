@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.dependencies.auth import get_current_user
-from app.api.schemas.documents import DocumentDetailResponse, DocumentUploadResponse
+from app.api.schemas.documents import DocumentDetailResponse, DocumentListResponse, DocumentUploadResponse
 from app.core.config import get_settings
 from app.db.session import get_db
 from app.models import Chunk, Document, DocumentStatus, User
@@ -12,6 +12,41 @@ from app.services.file_storage import save_pdf_bytes
 from app.tasks.dispatch import enqueue_document_processing
 
 router = APIRouter(prefix="/documents")
+
+
+@router.get("", response_model=DocumentListResponse)
+def list_documents(
+    limit: int = Query(default=100, ge=1, le=500),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> DocumentListResponse:
+    _ = current_user
+
+    rows = db.scalars(select(Document).order_by(Document.id.desc()).limit(limit)).all()
+    if not rows:
+        return DocumentListResponse(items=[])
+
+    document_ids = [row.id for row in rows]
+    count_rows = db.execute(
+        select(Chunk.document_id, func.count().label("chunk_count"))
+        .where(Chunk.document_id.in_(document_ids))
+        .group_by(Chunk.document_id)
+    ).all()
+    chunk_count_by_document_id = {int(document_id): int(chunk_count) for document_id, chunk_count in count_rows}
+
+    return DocumentListResponse(
+        items=[
+            DocumentDetailResponse(
+                id=row.id,
+                title=row.title,
+                status=row.status,
+                file_path=row.file_path,
+                upload_date=row.upload_date,
+                chunk_count=chunk_count_by_document_id.get(row.id, 0),
+            )
+            for row in rows
+        ]
+    )
 
 
 @router.post("/upload", response_model=DocumentUploadResponse, status_code=status.HTTP_202_ACCEPTED)
