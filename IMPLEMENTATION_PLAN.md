@@ -16,7 +16,8 @@ This plan translates the product vision in Claude.md into an execution roadmap w
 - Completed in Phase 4 hardening (backend): Celery async document processing flow with Redis broker, worker service, and queue dispatch fallback
 - Completed in Phase 4 hardening (backend): request tracing middleware with correlation IDs and structured request logs
 - Completed in Phase 4 hardening (devops): GitHub Actions backend CI workflow for dockerized pytest and image build validation
-- Current focus: Phase 4 frontend surfaces and observability expansion
+- Completed in Phase 4 (frontend): dashboard, graph view, and RDF viewer pages wired to secured backend endpoints with session token flow
+- Current focus: Phase 4 deployment hardening and monitoring expansion
 
 ## 1) Scope and Delivery Strategy
 
