@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 from secrets import token_bytes
 
 import jwt
+from jwt import PyJWTError
 
 from app.core.config import get_settings
 
@@ -69,3 +70,20 @@ def create_access_token(subject: str) -> tuple[str, int]:
 
     token = jwt.encode(payload, settings.auth_jwt_secret, algorithm=settings.auth_jwt_algorithm)
     return token, expires_in
+
+
+def decode_access_token(token: str) -> str | None:
+    settings = get_settings()
+
+    try:
+        payload = jwt.decode(token, settings.auth_jwt_secret, algorithms=[settings.auth_jwt_algorithm])
+    except PyJWTError:
+        return None
+
+    token_type = str(payload.get("type") or "")
+    subject = payload.get("sub")
+
+    if token_type != "access" or subject is None:
+        return None
+
+    return str(subject)

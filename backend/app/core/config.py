@@ -37,6 +37,10 @@ class Settings(BaseSettings):
     auth_jwt_algorithm: str = "HS256"
     auth_access_token_expire_minutes: int = Field(default=60, ge=5, le=1440)
 
+    rate_limit_enabled: bool = True
+    rate_limit_requests: int = Field(default=120, ge=10, le=5000)
+    rate_limit_window_seconds: int = Field(default=60, ge=10, le=3600)
+
     extraction_enable_spacy: bool = False
     extraction_spacy_model: str = "en_core_web_sm"
     extraction_enable_scibert: bool = False

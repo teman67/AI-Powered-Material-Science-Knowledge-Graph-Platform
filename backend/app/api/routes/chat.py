@@ -2,10 +2,11 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.api.dependencies.auth import get_current_user
 from app.api.schemas.chat import ChatContext, ChatGraphContext, ChatQueryRequest, ChatQueryResponse
 from app.core.config import get_settings
 from app.db.session import get_db
-from app.models import Chunk
+from app.models import Chunk, User
 from app.services.chat_service import build_answer
 from app.services.embedding_service import generate_embedding
 from app.services.graph_service import retrieve_graph_facts_for_query
@@ -14,7 +15,12 @@ router = APIRouter(prefix="/chat")
 
 
 @router.post("/query", response_model=ChatQueryResponse)
-def query_chat(payload: ChatQueryRequest, db: Session = Depends(get_db)) -> ChatQueryResponse:
+def query_chat(
+    payload: ChatQueryRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ChatQueryResponse:
+    _ = current_user
     settings = get_settings()
     top_k = payload.top_k or settings.chat_default_top_k
 

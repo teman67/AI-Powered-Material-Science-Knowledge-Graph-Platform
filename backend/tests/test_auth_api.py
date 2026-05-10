@@ -16,6 +16,26 @@ def _cleanup_user(email: str) -> None:
         db.close()
 
 
+def _register_and_login(client: TestClient, email: str, password: str = "StrongPass123!") -> str:
+    client.post(
+        "/auth/register",
+        json={
+            "email": email,
+            "password": password,
+            "full_name": "Auth Helper",
+        },
+    )
+    login_response = client.post(
+        "/auth/login",
+        json={
+            "email": email,
+            "password": password,
+        },
+    )
+    assert login_response.status_code == 200
+    return str(login_response.json()["access_token"])
+
+
 def test_auth_register_and_login() -> None:
     email = "auth_test_user@example.com"
     _cleanup_user(email)
@@ -95,5 +115,37 @@ def test_auth_login_wrong_password_returns_unauthorized() -> None:
     )
 
     assert bad_login.status_code == 401
+
+    _cleanup_user(email)
+
+
+def test_protected_chat_endpoint_requires_auth() -> None:
+    client = TestClient(app)
+
+    response = client.post(
+        "/chat/query",
+        json={"query": "What is thermal conductivity?", "top_k": 3},
+    )
+
+    assert response.status_code == 401
+
+
+def test_protected_chat_endpoint_accepts_valid_bearer_token() -> None:
+    email = "auth_guard_user@example.com"
+    _cleanup_user(email)
+
+    client = TestClient(app)
+    token = _register_and_login(client, email)
+
+    response = client.post(
+        "/chat/query",
+        json={"query": "What is thermal conductivity?", "top_k": 3},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert "answer" in payload
+    assert "contexts" in payload
 
     _cleanup_user(email)

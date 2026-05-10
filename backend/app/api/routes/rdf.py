@@ -2,9 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from app.api.dependencies.auth import get_current_user
 from app.api.schemas.rdf import RdfExportResponse
 from app.db.session import get_db
-from app.models import Chunk, Document, ExtractedEntity, RdfArtifact
+from app.models import Chunk, Document, ExtractedEntity, RdfArtifact, User
 from app.services.graph_service import ingest_document_entities_to_graph
 from app.services.rdf_service import generate_rdf_for_document
 
@@ -12,7 +13,12 @@ router = APIRouter(prefix="/rdf")
 
 
 @router.get("/export/{document_id}", response_model=RdfExportResponse)
-def export_rdf(document_id: int, db: Session = Depends(get_db)) -> RdfExportResponse:
+def export_rdf(
+    document_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> RdfExportResponse:
+    _ = current_user
     document = db.get(Document, document_id)
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found.")
