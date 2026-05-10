@@ -20,7 +20,7 @@ jobs:
         run: docker compose build backend
 
       - name: Run backend lint checks
-        run: docker compose run --rm backend ruff check app tests
+        run: docker compose run --rm -e RUFF_CACHE_DIR=/tmp/.ruff_cache backend ruff check app tests
 
       - name: Run backend test suite
         run: docker compose run --rm backend pytest -q
