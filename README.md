@@ -6,7 +6,7 @@ Initial scaffold for a full-stack AI platform that ingests material science PDFs
 
 - Backend: auth, upload/chunk/embed pipeline, RDF export, GraphRAG retrieval, Celery processing, request tracing, Prometheus metrics
 - Frontend: Dashboard, Chat, Graph View, RDF Viewer (secured token session)
-- CI: backend and frontend GitHub Actions workflows
+- CI: backend/frontend lint + test/build workflows and GHCR image publish workflow
 - Observability stack: Prometheus + Grafana services in Docker Compose
 
 ## Quick start

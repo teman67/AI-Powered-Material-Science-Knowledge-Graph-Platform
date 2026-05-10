@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 import { PlatformShell } from "./components/platform-shell";
 import { useAuth } from "./components/auth-provider";
@@ -27,7 +27,7 @@ export default function Home() {
     return { total, processed, processing, failed, chunks };
   }, [docs]);
 
-  async function loadDocuments() {
+  const loadDocuments = useCallback(async () => {
     if (!token) {
       setDocs([]);
       return;
@@ -35,7 +35,7 @@ export default function Home() {
 
     const response = await listDocuments(150, token);
     setDocs(sortDocs(response.items));
-  }
+  }, [token]);
 
   async function refreshDocument(documentId: number) {
     if (!token) {
@@ -56,7 +56,7 @@ export default function Home() {
     loadDocuments().catch(() => {
       setMessage("Could not load document list.");
     });
-  }, [ready, token]);
+  }, [ready, token, loadDocuments]);
 
   async function handleUpload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
