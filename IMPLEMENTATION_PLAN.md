@@ -7,7 +7,9 @@ This plan translates the product vision in Claude.md into an execution roadmap w
 ## Progress snapshot
 
 - Completed: Phase 0 scaffold (backend app shell, frontend app shell, docker-compose, environment templates, health endpoint)
-- Current focus: Phase 1 implementation (document upload, extraction, chunking, embeddings, basic semantic chat)
+- Completed in Phase 1 (backend): document upload endpoint, PDF extraction, cleaning/chunking, vector storage schema, semantic chat query endpoint
+- Completed in Phase 2 (backend foundation): entity extraction service, PMDcore mapping service, RDF generation, SHACL validation, and `/rdf/export/{document_id}` endpoint
+- Current focus: Phase 2 hardening (better extraction quality, ontology coverage, and integration tests)
 
 ## 1) Scope and Delivery Strategy
 

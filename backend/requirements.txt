@@ -8,3 +8,7 @@ python-multipart==0.0.27
 python-dotenv==1.2.2
 pytest==9.0.3
 httpx==0.28.1
+PyMuPDF==1.27.2
+pdfplumber==0.11.8
+rdflib==7.1.4
+pyshacl==0.30.1

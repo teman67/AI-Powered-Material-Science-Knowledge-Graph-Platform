@@ -18,6 +18,16 @@ class Settings(BaseSettings):
     neo4j_password: str = "password"
 
     cors_origins: str = "http://localhost:3000"
+    upload_dir: str = "app/data/documents"
+    max_upload_size_mb: int = Field(default=25, ge=1, le=200)
+
+    chunk_size_tokens: int = Field(default=1000, ge=100, le=4000)
+    chunk_overlap_tokens: int = Field(default=150, ge=0, le=1000)
+
+    embedding_model_name: str = "BAAI/bge-large-en"
+    embedding_dimension: int = Field(default=1024, ge=64, le=4096)
+    embedding_fallback_only: bool = False
+    chat_default_top_k: int = Field(default=5, ge=1, le=20)
 
 
 @lru_cache
