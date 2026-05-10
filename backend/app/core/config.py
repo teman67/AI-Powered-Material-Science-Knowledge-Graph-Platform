@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     request_id_header_name: str = "X-Request-ID"
     log_level: str = "INFO"
 
+    metrics_enabled: bool = True
+    metrics_path: str = "/metrics"
+
     celery_broker_url: str = "redis://redis:6379/0"
     celery_result_backend: str = "redis://redis:6379/0"
     celery_default_queue: str = "documents"

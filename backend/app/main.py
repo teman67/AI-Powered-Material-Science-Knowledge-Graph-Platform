@@ -1,8 +1,11 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import api_router
 from app.core.config import get_settings
+from app.core.metrics import PrometheusMetricsMiddleware, render_metrics
 from app.core.rate_limit import SimpleRateLimitMiddleware
 from app.core.request_tracing import RequestTracingMiddleware, configure_application_logging
 from app.db.session import init_db
@@ -10,7 +13,14 @@ from app.db.session import init_db
 settings = get_settings()
 configure_application_logging(settings.log_level)
 
-app = FastAPI(title=settings.app_name)
+
+@asynccontextmanager
+async def app_lifespan(_: FastAPI):
+    init_db()
+    yield
+
+
+app = FastAPI(title=settings.app_name, lifespan=app_lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -33,10 +43,15 @@ app.add_middleware(
     enabled=settings.request_tracing_enabled,
 )
 
+app.add_middleware(
+    PrometheusMetricsMiddleware,
+    enabled=settings.metrics_enabled,
+    metrics_path=settings.metrics_path,
+)
 
-@app.on_event("startup")
-def startup_event() -> None:
-    init_db()
 
+@app.get(settings.metrics_path)
+def metrics_endpoint():
+    return render_metrics()
 
 app.include_router(api_router)

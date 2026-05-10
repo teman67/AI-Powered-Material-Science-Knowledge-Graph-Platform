@@ -19,7 +19,11 @@ This plan translates the product vision in Claude.md into an execution roadmap w
 - Completed in Phase 4 (frontend): dashboard, graph view, and RDF viewer pages wired to secured backend endpoints with session token flow
 - Completed in Phase 4 (frontend): secured chat page with semantic and graph citation contexts
 - Completed in Phase 4 (backend/frontend): authenticated documents listing endpoint and server-backed dashboard status table
-- Current focus: Phase 4 deployment hardening and monitoring expansion
+- Completed in Phase 4 hardening (backend): Prometheus metrics middleware and `/metrics` endpoint
+- Completed in Phase 4 hardening (runtime): FastAPI lifespan-based startup initialization (deprecated startup event removed)
+- Completed in Phase 4 hardening (devops): Prometheus + Grafana services added to Docker Compose monitoring stack
+- Completed in Phase 4 hardening (devops): automated GHCR image publish workflow on main branch
+- Current focus: Phase 4 completion checklist (lint coverage)
 
 ## 1) Scope and Delivery Strategy
 

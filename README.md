@@ -4,10 +4,10 @@ Initial scaffold for a full-stack AI platform that ingests material science PDFs
 
 ## Current status
 
-- Phase 0 scaffold complete
-- FastAPI backend with `GET /health`
-- Next.js frontend shell
-- Docker Compose services: backend, frontend, postgres+pgvector, redis, neo4j
+- Backend: auth, upload/chunk/embed pipeline, RDF export, GraphRAG retrieval, Celery processing, request tracing, Prometheus metrics
+- Frontend: Dashboard, Chat, Graph View, RDF Viewer (secured token session)
+- CI: backend and frontend GitHub Actions workflows
+- Observability stack: Prometheus + Grafana services in Docker Compose
 
 ## Quick start
 
@@ -22,7 +22,10 @@ docker compose up --build
 
 - Frontend: http://localhost:3000
 - Backend health: http://localhost:8000/health
+- Backend metrics: http://localhost:8000/metrics
 - Neo4j Browser: http://localhost:7474
+- Prometheus: http://localhost:9090
+- Grafana: http://localhost:3001
 
 ## Project roadmap
 
