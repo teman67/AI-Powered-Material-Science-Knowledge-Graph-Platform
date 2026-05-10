@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     embedding_fallback_only: bool = False
     chat_default_top_k: int = Field(default=5, ge=1, le=20)
     chat_graph_top_k: int = Field(default=5, ge=1, le=20)
+    chat_graph_candidate_pool: int = Field(default=60, ge=10, le=500)
 
     graph_enabled: bool = True
 

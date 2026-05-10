@@ -39,3 +39,54 @@ def test_ingest_returns_counts_without_driver(monkeypatch) -> None:
     assert summary["properties"] == 1
     assert summary["processes"] == 1
     assert summary["applications"] == 1
+
+
+def test_rank_graph_facts_prioritizes_property_intent() -> None:
+    facts = [
+        graph_service.GraphFact(source="MoS2", relation="USED_IN", target="nanoelectronics"),
+        graph_service.GraphFact(source="MoS2", relation="HAS_PROPERTY", target="thermal conductivity"),
+        graph_service.GraphFact(source="MoS2", relation="PRODUCED_BY", target="annealing"),
+    ]
+
+    ranked = graph_service._rank_graph_facts_for_query(
+        "Which materials have high thermal conductivity?",
+        facts,
+        limit=3,
+    )
+
+    assert ranked
+    assert ranked[0].relation == "HAS_PROPERTY"
+
+
+def test_rank_graph_facts_prioritizes_process_intent() -> None:
+    facts = [
+        graph_service.GraphFact(source="MoS2", relation="HAS_PROPERTY", target="bandgap"),
+        graph_service.GraphFact(source="MoS2", relation="PRODUCED_BY", target="chemical vapor deposition"),
+        graph_service.GraphFact(source="MoS2", relation="USED_IN", target="sensor"),
+    ]
+
+    ranked = graph_service._rank_graph_facts_for_query(
+        "How is MoS2 synthesized?",
+        facts,
+        limit=3,
+    )
+
+    assert ranked
+    assert ranked[0].relation == "PRODUCED_BY"
+
+
+def test_rank_graph_facts_prioritizes_application_intent() -> None:
+    facts = [
+        graph_service.GraphFact(source="MoS2", relation="HAS_PROPERTY", target="bandgap"),
+        graph_service.GraphFact(source="MoS2", relation="PRODUCED_BY", target="hydrothermal"),
+        graph_service.GraphFact(source="MoS2", relation="USED_IN", target="photovoltaics"),
+    ]
+
+    ranked = graph_service._rank_graph_facts_for_query(
+        "What applications use MoS2?",
+        facts,
+        limit=3,
+    )
+
+    assert ranked
+    assert ranked[0].relation == "USED_IN"
