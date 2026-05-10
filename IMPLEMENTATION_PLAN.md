@@ -14,7 +14,9 @@ This plan translates the product vision in Claude.md into an execution roadmap w
 - Completed in Phase 4 (backend foundation): JWT authentication with `/auth/register` and `/auth/login`, secure password hashing, and token issuance
 - Completed in Phase 4 hardening (backend): auth guards applied to protected endpoints and basic API rate limiting middleware
 - Completed in Phase 4 hardening (backend): Celery async document processing flow with Redis broker, worker service, and queue dispatch fallback
-- Current focus: Phase 4 hardening (request tracing and CI)
+- Completed in Phase 4 hardening (backend): request tracing middleware with correlation IDs and structured request logs
+- Completed in Phase 4 hardening (devops): GitHub Actions backend CI workflow for dockerized pytest and image build validation
+- Current focus: Phase 4 frontend surfaces and observability expansion
 
 ## 1) Scope and Delivery Strategy
 

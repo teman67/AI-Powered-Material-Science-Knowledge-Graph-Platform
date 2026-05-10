@@ -1,0 +1,30 @@
+name: Backend CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  backend-tests-and-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build backend image
+        run: docker compose build backend
+
+      - name: Run backend test suite
+        run: docker compose run --rm backend pytest -q
+
+      - name: Validate backend and frontend image builds
+        run: docker compose build backend frontend
+
+      - name: Tear down compose services
+        if: always()
+        run: docker compose down -v

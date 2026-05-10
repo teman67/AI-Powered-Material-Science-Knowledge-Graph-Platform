@@ -41,6 +41,10 @@ class Settings(BaseSettings):
     rate_limit_requests: int = Field(default=120, ge=10, le=5000)
     rate_limit_window_seconds: int = Field(default=60, ge=10, le=3600)
 
+    request_tracing_enabled: bool = True
+    request_id_header_name: str = "X-Request-ID"
+    log_level: str = "INFO"
+
     celery_broker_url: str = "redis://redis:6379/0"
     celery_result_backend: str = "redis://redis:6379/0"
     celery_default_queue: str = "documents"
