@@ -13,7 +13,7 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 
 def init_db() -> None:
-    from app.models import Chunk, Document, ExtractedEntity, RdfArtifact  # noqa: F401
+    from app.models import Chunk, Document, ExtractedEntity, RdfArtifact, User  # noqa: F401
 
     with engine.begin() as connection:
         connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))

@@ -11,7 +11,8 @@ This plan translates the product vision in Claude.md into an execution roadmap w
 - Completed in Phase 2 (backend foundation): entity extraction service, PMDcore mapping service, RDF generation, SHACL validation, and `/rdf/export/{document_id}` endpoint
 - Completed in Phase 3 (backend foundation): Neo4j graph ingestion service, graph read endpoints (`/graph/materials`, `/graph/relations`), and hybrid chat retrieval with graph evidence
 - Completed in Phase 3 hardening: intent-aware GraphRAG ranking over graph facts using relation intent and lexical relevance scoring
-- Current focus: Phase 3 hardening (graph traversal quality and integration tests)
+- Completed in Phase 4 (backend foundation): JWT authentication with `/auth/register` and `/auth/login`, secure password hashing, and token issuance
+- Current focus: Phase 4 hardening (auth guard dependencies, async tasks, rate limiting, and CI)
 
 ## 1) Scope and Delivery Strategy
 

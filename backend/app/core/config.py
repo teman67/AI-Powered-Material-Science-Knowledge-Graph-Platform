@@ -33,6 +33,10 @@ class Settings(BaseSettings):
 
     graph_enabled: bool = True
 
+    auth_jwt_secret: str = "change-this-in-production"
+    auth_jwt_algorithm: str = "HS256"
+    auth_access_token_expire_minutes: int = Field(default=60, ge=5, le=1440)
+
     extraction_enable_spacy: bool = False
     extraction_spacy_model: str = "en_core_web_sm"
     extraction_enable_scibert: bool = False
