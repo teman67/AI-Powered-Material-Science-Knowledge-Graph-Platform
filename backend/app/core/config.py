@@ -29,6 +29,12 @@ class Settings(BaseSettings):
     embedding_fallback_only: bool = False
     chat_default_top_k: int = Field(default=5, ge=1, le=20)
 
+    extraction_enable_spacy: bool = False
+    extraction_spacy_model: str = "en_core_web_sm"
+    extraction_enable_scibert: bool = False
+    extraction_scibert_model: str = ""
+    extraction_scibert_device: int = -1
+
 
 @lru_cache
 def get_settings() -> Settings:

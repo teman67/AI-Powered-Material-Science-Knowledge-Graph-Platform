@@ -35,7 +35,8 @@ def generate_rdf_for_document(document: Document, chunks: list[Chunk]) -> RdfGen
         graph.add((document_node, PMD.title, Literal(document.title)))
 
     material_nodes = _add_materials(graph, document_node, mapped_entities)
-    _add_property_measurements(graph, material_nodes, mapped_entities)
+    _add_properties(graph, material_nodes, mapped_entities)
+    _add_crystal_structures(graph, material_nodes, mapped_entities)
     _add_processes(graph, material_nodes, mapped_entities)
     _add_applications(graph, material_nodes, mapped_entities)
 
@@ -70,13 +71,18 @@ def _add_materials(graph: Graph, document_node: URIRef, entities: list[MappedEnt
     return material_nodes
 
 
-def _add_property_measurements(graph: Graph, material_nodes: list[URIRef], entities: list[MappedEntityRecord]) -> None:
+def _add_properties(graph: Graph, material_nodes: list[URIRef], entities: list[MappedEntityRecord]) -> None:
     if not material_nodes:
         return
 
     material = material_nodes[0]
-    measurements = [entity for entity in entities if entity.entity_type == "property_measurement"]
-    for index, entity in enumerate(measurements, start=1):
+    properties = [
+        entity
+        for entity in entities
+        if entity.entity_type in {"property_measurement", "property"}
+    ]
+
+    for index, entity in enumerate(properties, start=1):
         property_node = EX[f"property_{_slug(entity.property_name or entity.entity_value)}_{index}"]
         graph.add((property_node, RDF.type, _mapping_to_uri(entity.ontology_mapping)))
         graph.add((property_node, PMD.label, Literal(entity.property_name or entity.entity_value)))
@@ -86,6 +92,19 @@ def _add_property_measurements(graph: Graph, material_nodes: list[URIRef], entit
             graph.add((property_node, PMD.unit, Literal(entity.unit)))
 
         graph.add((material, PMD.hasProperty, property_node))
+
+
+def _add_crystal_structures(graph: Graph, material_nodes: list[URIRef], entities: list[MappedEntityRecord]) -> None:
+    if not material_nodes:
+        return
+
+    material = material_nodes[0]
+    structures = [entity for entity in entities if entity.entity_type == "crystal_structure"]
+    for entity in structures:
+        structure_node = EX[f"structure_{_slug(entity.entity_value)}"]
+        graph.add((structure_node, RDF.type, PMD.Property))
+        graph.add((structure_node, PMD.label, Literal(entity.entity_value)))
+        graph.add((material, PMD.hasProperty, structure_node))
 
 
 def _add_processes(graph: Graph, material_nodes: list[URIRef], entities: list[MappedEntityRecord]) -> None:

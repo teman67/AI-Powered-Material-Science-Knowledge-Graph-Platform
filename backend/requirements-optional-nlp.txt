@@ -1,0 +1,7 @@
+# Optional NLP dependencies for richer extraction.
+# Install when enabling EXTRACTION_ENABLE_SPACY or EXTRACTION_ENABLE_SCIBERT.
+spacy>=3.8,<4
+transformers>=4.45,<5
+# A PyTorch installation is required by Hugging Face token-classification pipelines.
+# Install CPU or CUDA build according to your environment:
+# https://pytorch.org/get-started/locally/

@@ -55,6 +55,13 @@ def _mapping_for_candidate(
     if candidate.entity_type == "application":
         return class_map["application"]
 
+    if candidate.entity_type == "property":
+        key = _normalize_key(candidate.property_name or candidate.entity_value)
+        return property_map.get(key, class_map["property"])
+
+    if candidate.entity_type == "crystal_structure":
+        return class_map["property"]
+
     if candidate.entity_type == "property_measurement":
         key = _normalize_key(candidate.property_name or candidate.entity_value)
         return property_map.get(key, class_map["property"])
