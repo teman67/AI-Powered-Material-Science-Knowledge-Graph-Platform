@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.api.schemas.rdf import RdfExportResponse
 from app.db.session import get_db
 from app.models import Chunk, Document, ExtractedEntity, RdfArtifact
+from app.services.graph_service import ingest_document_entities_to_graph
 from app.services.rdf_service import generate_rdf_for_document
 
 router = APIRouter(prefix="/rdf")
@@ -50,6 +51,12 @@ def export_rdf(document_id: int, db: Session = Depends(get_db)) -> RdfExportResp
         )
     )
     db.commit()
+
+    ingest_document_entities_to_graph(
+        document_id=document_id,
+        document_title=document.title,
+        entities=result.entities,
+    )
 
     return RdfExportResponse(
         document_id=document_id,

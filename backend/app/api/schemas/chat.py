@@ -13,6 +13,13 @@ class ChatContext(BaseModel):
     excerpt: str
 
 
+class ChatGraphContext(BaseModel):
+    source: str
+    relation: str
+    target: str
+
+
 class ChatQueryResponse(BaseModel):
     answer: str
     contexts: list[ChatContext]
+    graph_contexts: list[ChatGraphContext] = Field(default_factory=list)

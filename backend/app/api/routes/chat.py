@@ -2,12 +2,13 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.schemas.chat import ChatContext, ChatQueryRequest, ChatQueryResponse
+from app.api.schemas.chat import ChatContext, ChatGraphContext, ChatQueryRequest, ChatQueryResponse
 from app.core.config import get_settings
 from app.db.session import get_db
 from app.models import Chunk
 from app.services.chat_service import build_answer
 from app.services.embedding_service import generate_embedding
+from app.services.graph_service import retrieve_graph_facts_for_query
 
 router = APIRouter(prefix="/chat")
 
@@ -38,5 +39,11 @@ def query_chat(payload: ChatQueryRequest, db: Session = Depends(get_db)) -> Chat
             )
         )
 
-    answer = build_answer(payload.query, contexts)
-    return ChatQueryResponse(answer=answer, contexts=contexts)
+    graph_facts = retrieve_graph_facts_for_query(payload.query, limit=settings.chat_graph_top_k)
+    graph_contexts = [
+        ChatGraphContext(source=fact.source, relation=fact.relation, target=fact.target)
+        for fact in graph_facts
+    ]
+
+    answer = build_answer(payload.query, contexts, graph_contexts)
+    return ChatQueryResponse(answer=answer, contexts=contexts, graph_contexts=graph_contexts)

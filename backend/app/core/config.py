@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     embedding_dimension: int = Field(default=1024, ge=64, le=4096)
     embedding_fallback_only: bool = False
     chat_default_top_k: int = Field(default=5, ge=1, le=20)
+    chat_graph_top_k: int = Field(default=5, ge=1, le=20)
+
+    graph_enabled: bool = True
 
     extraction_enable_spacy: bool = False
     extraction_spacy_model: str = "en_core_web_sm"
