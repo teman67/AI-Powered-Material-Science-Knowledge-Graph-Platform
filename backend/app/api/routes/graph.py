@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies.auth import get_current_user
 from app.api.schemas.graph import (
+    CrossPaperExplorationItem,
+    CrossPaperExplorationResponse,
     CrossPaperLinkItem,
     CrossPaperLinksResponse,
     GraphMaterialItem,
@@ -12,7 +14,7 @@ from app.api.schemas.graph import (
 )
 from app.db.session import get_db
 from app.models import User
-from app.services.graph_service import fetch_cross_paper_links, fetch_materials, fetch_relations
+from app.services.graph_service import fetch_cross_paper_exploration, fetch_cross_paper_links, fetch_materials, fetch_relations
 
 router = APIRouter(prefix="/graph")
 
@@ -48,3 +50,23 @@ def get_cross_paper_links(
     _ = current_user
     rows = fetch_cross_paper_links(db=db, limit=limit, min_shared=min_shared)
     return CrossPaperLinksResponse(items=[CrossPaperLinkItem(**row) for row in rows])
+
+
+@router.get("/cross-paper-explore/{document_id}", response_model=CrossPaperExplorationResponse)
+def get_cross_paper_exploration(
+    document_id: int,
+    limit: int = Query(default=20, ge=1, le=200),
+    min_shared: int = Query(default=1, ge=1, le=20),
+    query: str | None = Query(default=None, min_length=2, max_length=500),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> CrossPaperExplorationResponse:
+    _ = current_user
+    rows = fetch_cross_paper_exploration(
+        db=db,
+        source_document_id=document_id,
+        limit=limit,
+        min_shared=min_shared,
+        query_text=query,
+    )
+    return CrossPaperExplorationResponse(items=[CrossPaperExplorationItem(**row) for row in rows])

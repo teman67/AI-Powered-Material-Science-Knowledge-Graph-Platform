@@ -97,6 +97,85 @@ def fetch_cross_paper_links(db: Session, limit: int = 50, min_shared: int = 2) -
     return links[:limit]
 
 
+def fetch_cross_paper_exploration(
+    db: Session,
+    source_document_id: int,
+    limit: int = 20,
+    min_shared: int = 1,
+    query_text: str | None = None,
+) -> list[dict[str, Any]]:
+    rows = db.execute(
+        select(
+            ExtractedEntity.document_id,
+            ExtractedEntity.entity_type,
+            ExtractedEntity.entity_value,
+            ExtractedEntity.ontology_mapping,
+        ).where(ExtractedEntity.entity_type.in_(_LINKABLE_ENTITY_TYPES))
+    ).all()
+
+    if not rows:
+        return []
+
+    entities_by_document: dict[int, set[str]] = {}
+    key_to_display: dict[str, str] = {}
+
+    for document_id, entity_type, entity_value, ontology_mapping in rows:
+        normalized_value = _normalize_entity_value(str(entity_value))
+        if not normalized_value:
+            continue
+
+        entity_key = f"{str(ontology_mapping).lower()}|{str(entity_type).lower()}|{normalized_value}"
+        entities_by_document.setdefault(int(document_id), set()).add(entity_key)
+        key_to_display.setdefault(entity_key, str(entity_value).strip())
+
+    source_keys = entities_by_document.get(source_document_id)
+    if not source_keys:
+        return []
+
+    document_ids = sorted(entities_by_document.keys())
+    title_rows = db.execute(select(Document.id, Document.title).where(Document.id.in_(document_ids))).all()
+    title_by_document_id = {int(document_id): title for document_id, title in title_rows}
+
+    ranked_items: list[dict[str, Any]] = []
+    for target_document_id, target_keys in entities_by_document.items():
+        if target_document_id == source_document_id:
+            continue
+
+        shared_keys = source_keys.intersection(target_keys)
+        if len(shared_keys) < min_shared:
+            continue
+
+        bridge_entities = sorted({key_to_display[key] for key in shared_keys})[:10]
+        relevance_score = _score_cross_paper_candidate(
+            shared_keys=shared_keys,
+            bridge_entities=bridge_entities,
+            target_title=title_by_document_id.get(target_document_id),
+            query_text=query_text,
+        )
+
+        ranked_items.append(
+            {
+                "source_document_id": source_document_id,
+                "source_document_title": title_by_document_id.get(source_document_id),
+                "target_document_id": target_document_id,
+                "target_document_title": title_by_document_id.get(target_document_id),
+                "shared_entity_count": len(shared_keys),
+                "bridge_entities": bridge_entities,
+                "relevance_score": round(relevance_score, 3),
+            }
+        )
+
+    ranked_items.sort(
+        key=lambda item: (
+            float(item["relevance_score"]),
+            int(item["shared_entity_count"]),
+            -int(item["target_document_id"]),
+        ),
+        reverse=True,
+    )
+    return ranked_items[:limit]
+
+
 def ingest_document_entities_to_graph(
     document_id: int,
     document_title: str | None,
@@ -390,6 +469,54 @@ def _normalize_entity_value(value: str) -> str:
     cleaned = re.sub(r"\s+", " ", value.strip().lower())
     cleaned = re.sub(r"[^a-z0-9\-\.\+ ]", "", cleaned)
     return cleaned.strip()
+
+
+def _score_cross_paper_candidate(
+    shared_keys: set[str],
+    bridge_entities: list[str],
+    target_title: str | None,
+    query_text: str | None,
+) -> float:
+    score = float(len(shared_keys))
+    if not query_text:
+        return score
+
+    tokens = _tokenize_text(query_text)
+    if not tokens:
+        return score
+
+    entity_blob = " ".join(bridge_entities).lower()
+    title_lower = (target_title or "").lower()
+    lexical_overlap = sum(1 for token in tokens if token in entity_blob)
+    title_overlap = sum(1 for token in tokens if token in title_lower)
+
+    score += lexical_overlap * 0.7
+    score += title_overlap * 0.3
+    score += _query_intent_entity_type_boost(query_text=query_text, shared_keys=shared_keys)
+    return score
+
+
+def _query_intent_entity_type_boost(query_text: str, shared_keys: set[str]) -> float:
+    query_lower = query_text.lower()
+    has_property = any("|property|" in key or "|property_measurement|" in key or "|crystal_structure|" in key for key in shared_keys)
+    has_process = any("|process|" in key for key in shared_keys)
+    has_application = any("|application|" in key for key in shared_keys)
+
+    property_terms = {"property", "properties", "conductivity", "bandgap", "thermal", "electrical"}
+    process_terms = {"process", "synthesis", "synthesized", "fabrication", "deposition", "annealing"}
+    application_terms = {"application", "applications", "use", "used", "device", "battery", "sensor"}
+
+    tokens = set(_tokenize_text(query_text))
+    boost = 0.0
+
+    if has_property and tokens.intersection(property_terms):
+        boost += 0.9
+    if has_process and (tokens.intersection(process_terms) or "how" in query_lower):
+        boost += 0.9
+    if has_application and tokens.intersection(application_terms):
+        boost += 0.9
+
+    return boost
 
 
 def _merge_document_and_materials(tx: Any, document_id: int, document_title: str | None, materials: list[str]) -> None:

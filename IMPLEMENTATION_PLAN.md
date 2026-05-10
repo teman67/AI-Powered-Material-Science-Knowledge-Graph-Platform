@@ -25,7 +25,8 @@ This plan translates the product vision in Claude.md into an execution roadmap w
 - Completed in Phase 4 hardening (devops): automated GHCR image publish workflow on main branch
 - Completed in Phase 4 hardening (devops): lint coverage automation in CI (backend Ruff + frontend ESLint)
 - Completed in Phase 5 (advanced capabilities baseline): cross-paper knowledge linking API (`/graph/cross-paper-links`) with secured frontend visualization in Graph view
-- Current focus: Phase 5 advanced capabilities continuation (graph traversal and cross-paper exploration UX)
+- Completed in Phase 5 (advanced capabilities continuation): cross-paper traversal endpoint (`/graph/cross-paper-explore/{document_id}`) with query-aware ranking and Graph UI exploration paths table
+- Current focus: Phase 5 advanced capabilities continuation (query-native cross-paper recommendations and graph expansion UX)
 
 ## 1) Scope and Delivery Strategy
 

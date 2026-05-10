@@ -33,3 +33,17 @@ class CrossPaperLinkItem(BaseModel):
 
 class CrossPaperLinksResponse(BaseModel):
     items: list[CrossPaperLinkItem]
+
+
+class CrossPaperExplorationItem(BaseModel):
+    source_document_id: int
+    source_document_title: str | None
+    target_document_id: int
+    target_document_title: str | None
+    shared_entity_count: int
+    bridge_entities: list[str]
+    relevance_score: float
+
+
+class CrossPaperExplorationResponse(BaseModel):
+    items: list[CrossPaperExplorationItem]

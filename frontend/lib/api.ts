@@ -84,6 +84,20 @@ export type CrossPaperLinksResponse = {
   items: CrossPaperLinkItem[];
 };
 
+export type CrossPaperExplorationItem = {
+  source_document_id: number;
+  source_document_title: string | null;
+  target_document_id: number;
+  target_document_title: string | null;
+  shared_entity_count: number;
+  bridge_entities: string[];
+  relevance_score: number;
+};
+
+export type CrossPaperExplorationResponse = {
+  items: CrossPaperExplorationItem[];
+};
+
 export type RdfExportResponse = {
   document_id: number;
   is_valid: boolean;
@@ -207,6 +221,23 @@ export function getCrossPaperLinks(limit: number, minShared: number, token: stri
     min_shared: String(minShared),
   });
   return requestJson<CrossPaperLinksResponse>(`/graph/cross-paper-links?${params.toString()}`, { token });
+}
+
+export function getCrossPaperExploration(
+  documentId: number,
+  limit: number,
+  minShared: number,
+  query: string | undefined,
+  token: string,
+): Promise<CrossPaperExplorationResponse> {
+  const params = new URLSearchParams({
+    limit: String(limit),
+    min_shared: String(minShared),
+  });
+  if (query && query.trim()) {
+    params.set("query", query.trim());
+  }
+  return requestJson<CrossPaperExplorationResponse>(`/graph/cross-paper-explore/${documentId}?${params.toString()}`, { token });
 }
 
 export function exportRdf(documentId: number, token: string): Promise<RdfExportResponse> {

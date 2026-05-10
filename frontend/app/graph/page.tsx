@@ -4,7 +4,15 @@ import { useMemo, useState } from "react";
 
 import { useAuth } from "../components/auth-provider";
 import { PlatformShell } from "../components/platform-shell";
-import { CrossPaperLinkItem, GraphRelationItem, getCrossPaperLinks, getGraphMaterials, getGraphRelations } from "../../lib/api";
+import {
+  CrossPaperExplorationItem,
+  CrossPaperLinkItem,
+  GraphRelationItem,
+  getCrossPaperExploration,
+  getCrossPaperLinks,
+  getGraphMaterials,
+  getGraphRelations,
+} from "../../lib/api";
 
 type NodePoint = {
   label: string;
@@ -35,11 +43,14 @@ export default function GraphPage() {
   const [materials, setMaterials] = useState<{ material: string; property_count: number; process_count: number; application_count: number }[]>([]);
   const [relations, setRelations] = useState<GraphRelationItem[]>([]);
   const [crossPaperLinks, setCrossPaperLinks] = useState<CrossPaperLinkItem[]>([]);
+  const [crossPaperExploration, setCrossPaperExploration] = useState<CrossPaperExplorationItem[]>([]);
   const [materialFilter, setMaterialFilter] = useState("");
   const [materialLimit, setMaterialLimit] = useState(30);
   const [relationLimit, setRelationLimit] = useState(80);
   const [crossPaperLimit, setCrossPaperLimit] = useState(20);
   const [minSharedEntities, setMinSharedEntities] = useState(2);
+  const [explorationDocumentId, setExplorationDocumentId] = useState(0);
+  const [explorationQuery, setExplorationQuery] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,14 +68,20 @@ export default function GraphPage() {
     setBusy(true);
     setError(null);
     try {
-      const [materialResponse, relationResponse, crossPaperResponse] = await Promise.all([
+      const explorationPromise = explorationDocumentId > 0
+        ? getCrossPaperExploration(explorationDocumentId, crossPaperLimit, minSharedEntities, explorationQuery || undefined, token)
+        : Promise.resolve({ items: [] as CrossPaperExplorationItem[] });
+
+      const [materialResponse, relationResponse, crossPaperResponse, explorationResponse] = await Promise.all([
         getGraphMaterials(materialLimit, token),
         getGraphRelations(relationLimit, materialFilter || undefined, token),
         getCrossPaperLinks(crossPaperLimit, minSharedEntities, token),
+        explorationPromise,
       ]);
       setMaterials(materialResponse.items);
       setRelations(relationResponse.items);
       setCrossPaperLinks(crossPaperResponse.items);
+      setCrossPaperExploration(explorationResponse.items);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Failed to load graph data.");
     } finally {
@@ -130,12 +147,34 @@ export default function GraphPage() {
                 onChange={(event) => setMinSharedEntities(Number(event.target.value) || 2)}
               />
             </label>
+            <label>
+              Explore from document ID
+              <input
+                type="number"
+                min={0}
+                max={1000000}
+                value={explorationDocumentId}
+                onChange={(event) => setExplorationDocumentId(Number(event.target.value) || 0)}
+                placeholder="0 disables"
+              />
+            </label>
+            <label>
+              Exploration query (optional)
+              <input
+                type="text"
+                value={explorationQuery}
+                onChange={(event) => setExplorationQuery(event.target.value)}
+                placeholder="e.g. thermal conductivity applications"
+              />
+            </label>
           </div>
           <div className="panel-row">
             <button type="button" onClick={loadGraphData} disabled={!token || busy}>
               {busy ? "Loading..." : "Load Graph"}
             </button>
-            <span className="muted">{relations.length} relations, {materials.length} materials, {crossPaperLinks.length} cross-paper links</span>
+            <span className="muted">
+              {relations.length} relations, {materials.length} materials, {crossPaperLinks.length} cross-paper links, {crossPaperExploration.length} exploration paths
+            </span>
           </div>
           {error ? <p className="info-line">{error}</p> : null}
         </article>
@@ -237,6 +276,41 @@ export default function GraphPage() {
                       </td>
                       <td>{link.shared_entity_count}</td>
                       <td>{link.shared_entities.join(", ")}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <article className="panel-card">
+          <h2>Cross-Paper Exploration Paths</h2>
+          <p className="muted">Set a source document ID in controls to traverse to related papers via shared entities.</p>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Path</th>
+                  <th>Shared</th>
+                  <th>Relevance</th>
+                  <th>Bridge Entities</th>
+                </tr>
+              </thead>
+              <tbody>
+                {crossPaperExploration.length === 0 ? (
+                  <tr>
+                    <td colSpan={4}>No exploration paths loaded.</td>
+                  </tr>
+                ) : (
+                  crossPaperExploration.map((item) => (
+                    <tr key={`${item.source_document_id}-${item.target_document_id}`}>
+                      <td>
+                        #{item.source_document_id} {item.source_document_title || "Untitled"} → #{item.target_document_id} {item.target_document_title || "Untitled"}
+                      </td>
+                      <td>{item.shared_entity_count}</td>
+                      <td>{item.relevance_score.toFixed(2)}</td>
+                      <td>{item.bridge_entities.join(", ")}</td>
                     </tr>
                   ))
                 )}
