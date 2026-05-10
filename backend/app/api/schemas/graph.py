@@ -20,3 +20,16 @@ class GraphRelationItem(BaseModel):
 
 class GraphRelationsResponse(BaseModel):
     items: list[GraphRelationItem]
+
+
+class CrossPaperLinkItem(BaseModel):
+    document_a_id: int
+    document_a_title: str | None
+    document_b_id: int
+    document_b_title: str | None
+    shared_entity_count: int
+    shared_entities: list[str]
+
+
+class CrossPaperLinksResponse(BaseModel):
+    items: list[CrossPaperLinkItem]

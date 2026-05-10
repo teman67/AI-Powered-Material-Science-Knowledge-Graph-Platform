@@ -1,9 +1,14 @@
 import re
 from collections.abc import Iterable
 from dataclasses import dataclass
+from itertools import combinations
 from typing import Any
 
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from app.core.config import get_settings
+from app.models import Document, ExtractedEntity
 from app.services.ontology_mapping import MappedEntityRecord
 
 try:
@@ -14,12 +19,82 @@ except Exception:
 _DRIVER: Any = None
 _DRIVER_INIT_FAILED = False
 
+_LINKABLE_ENTITY_TYPES = {
+    "material",
+    "property",
+    "property_measurement",
+    "process",
+    "application",
+    "crystal_structure",
+}
+
 
 @dataclass
 class GraphFact:
     source: str
     relation: str
     target: str
+
+
+def fetch_cross_paper_links(db: Session, limit: int = 50, min_shared: int = 2) -> list[dict[str, Any]]:
+    rows = db.execute(
+        select(
+            ExtractedEntity.document_id,
+            ExtractedEntity.entity_type,
+            ExtractedEntity.entity_value,
+            ExtractedEntity.ontology_mapping,
+        ).where(ExtractedEntity.entity_type.in_(_LINKABLE_ENTITY_TYPES))
+    ).all()
+
+    if not rows:
+        return []
+
+    entities_by_document: dict[int, set[str]] = {}
+    key_to_display: dict[str, str] = {}
+
+    for document_id, entity_type, entity_value, ontology_mapping in rows:
+        normalized_value = _normalize_entity_value(str(entity_value))
+        if not normalized_value:
+            continue
+
+        entity_key = f"{str(ontology_mapping).lower()}|{str(entity_type).lower()}|{normalized_value}"
+        entities_by_document.setdefault(int(document_id), set()).add(entity_key)
+        key_to_display.setdefault(entity_key, str(entity_value).strip())
+
+    if len(entities_by_document) < 2:
+        return []
+
+    document_ids = sorted(entities_by_document.keys())
+    title_rows = db.execute(select(Document.id, Document.title).where(Document.id.in_(document_ids))).all()
+    title_by_document_id = {int(document_id): title for document_id, title in title_rows}
+
+    links: list[dict[str, Any]] = []
+    for doc_a_id, doc_b_id in combinations(document_ids, 2):
+        shared_keys = entities_by_document[doc_a_id].intersection(entities_by_document[doc_b_id])
+        if len(shared_keys) < min_shared:
+            continue
+
+        shared_entities = sorted({key_to_display[key] for key in shared_keys})[:8]
+        links.append(
+            {
+                "document_a_id": doc_a_id,
+                "document_a_title": title_by_document_id.get(doc_a_id),
+                "document_b_id": doc_b_id,
+                "document_b_title": title_by_document_id.get(doc_b_id),
+                "shared_entity_count": len(shared_keys),
+                "shared_entities": shared_entities,
+            }
+        )
+
+    links.sort(
+        key=lambda item: (
+            int(item["shared_entity_count"]),
+            -int(item["document_a_id"]),
+            -int(item["document_b_id"]),
+        ),
+        reverse=True,
+    )
+    return links[:limit]
 
 
 def ingest_document_entities_to_graph(
@@ -309,6 +384,12 @@ def _relation_intent_boosts(query_text: str, tokens: list[str]) -> dict[str, flo
 def _tokenize_text(text: str) -> list[str]:
     tokens = re.findall(r"[a-zA-Z0-9_\-]+", text.lower())
     return [token for token in tokens if len(token) >= 3]
+
+
+def _normalize_entity_value(value: str) -> str:
+    cleaned = re.sub(r"\s+", " ", value.strip().lower())
+    cleaned = re.sub(r"[^a-z0-9\-\.\+ ]", "", cleaned)
+    return cleaned.strip()
 
 
 def _merge_document_and_materials(tx: Any, document_id: int, document_title: str | None, materials: list[str]) -> None:

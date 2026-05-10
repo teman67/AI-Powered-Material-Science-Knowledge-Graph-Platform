@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 
 import { useAuth } from "../components/auth-provider";
 import { PlatformShell } from "../components/platform-shell";
-import { GraphRelationItem, getGraphMaterials, getGraphRelations } from "../../lib/api";
+import { CrossPaperLinkItem, GraphRelationItem, getCrossPaperLinks, getGraphMaterials, getGraphRelations } from "../../lib/api";
 
 type NodePoint = {
   label: string;
@@ -34,9 +34,12 @@ export default function GraphPage() {
   const { token } = useAuth();
   const [materials, setMaterials] = useState<{ material: string; property_count: number; process_count: number; application_count: number }[]>([]);
   const [relations, setRelations] = useState<GraphRelationItem[]>([]);
+  const [crossPaperLinks, setCrossPaperLinks] = useState<CrossPaperLinkItem[]>([]);
   const [materialFilter, setMaterialFilter] = useState("");
   const [materialLimit, setMaterialLimit] = useState(30);
   const [relationLimit, setRelationLimit] = useState(80);
+  const [crossPaperLimit, setCrossPaperLimit] = useState(20);
+  const [minSharedEntities, setMinSharedEntities] = useState(2);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,12 +57,14 @@ export default function GraphPage() {
     setBusy(true);
     setError(null);
     try {
-      const [materialResponse, relationResponse] = await Promise.all([
+      const [materialResponse, relationResponse, crossPaperResponse] = await Promise.all([
         getGraphMaterials(materialLimit, token),
         getGraphRelations(relationLimit, materialFilter || undefined, token),
+        getCrossPaperLinks(crossPaperLimit, minSharedEntities, token),
       ]);
       setMaterials(materialResponse.items);
       setRelations(relationResponse.items);
+      setCrossPaperLinks(crossPaperResponse.items);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Failed to load graph data.");
     } finally {
@@ -105,12 +110,32 @@ export default function GraphPage() {
                 placeholder="Optional material name"
               />
             </label>
+            <label>
+              Cross-paper links limit
+              <input
+                type="number"
+                min={1}
+                max={500}
+                value={crossPaperLimit}
+                onChange={(event) => setCrossPaperLimit(Number(event.target.value) || 20)}
+              />
+            </label>
+            <label>
+              Min shared entities
+              <input
+                type="number"
+                min={1}
+                max={20}
+                value={minSharedEntities}
+                onChange={(event) => setMinSharedEntities(Number(event.target.value) || 2)}
+              />
+            </label>
           </div>
           <div className="panel-row">
             <button type="button" onClick={loadGraphData} disabled={!token || busy}>
               {busy ? "Loading..." : "Load Graph"}
             </button>
-            <span className="muted">{relations.length} relations, {materials.length} materials</span>
+            <span className="muted">{relations.length} relations, {materials.length} materials, {crossPaperLinks.length} cross-paper links</span>
           </div>
           {error ? <p className="info-line">{error}</p> : null}
         </article>
@@ -176,6 +201,42 @@ export default function GraphPage() {
                       <td>{row.property_count}</td>
                       <td>{row.process_count}</td>
                       <td>{row.application_count}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <article className="panel-card">
+          <h2>Cross-Paper Knowledge Links</h2>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Document A</th>
+                  <th>Document B</th>
+                  <th>Shared Entities</th>
+                  <th>Examples</th>
+                </tr>
+              </thead>
+              <tbody>
+                {crossPaperLinks.length === 0 ? (
+                  <tr>
+                    <td colSpan={4}>No cross-paper links found with current threshold.</td>
+                  </tr>
+                ) : (
+                  crossPaperLinks.map((link) => (
+                    <tr key={`${link.document_a_id}-${link.document_b_id}`}>
+                      <td>
+                        #{link.document_a_id} {link.document_a_title || "Untitled"}
+                      </td>
+                      <td>
+                        #{link.document_b_id} {link.document_b_title || "Untitled"}
+                      </td>
+                      <td>{link.shared_entity_count}</td>
+                      <td>{link.shared_entities.join(", ")}</td>
                     </tr>
                   ))
                 )}

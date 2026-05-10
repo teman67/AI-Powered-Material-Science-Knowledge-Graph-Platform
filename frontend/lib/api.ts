@@ -71,6 +71,19 @@ export type GraphRelationsResponse = {
   items: GraphRelationItem[];
 };
 
+export type CrossPaperLinkItem = {
+  document_a_id: number;
+  document_a_title: string | null;
+  document_b_id: number;
+  document_b_title: string | null;
+  shared_entity_count: number;
+  shared_entities: string[];
+};
+
+export type CrossPaperLinksResponse = {
+  items: CrossPaperLinkItem[];
+};
+
 export type RdfExportResponse = {
   document_id: number;
   is_valid: boolean;
@@ -186,6 +199,14 @@ export function getGraphRelations(limit: number, material: string | undefined, t
     params.set("material", material);
   }
   return requestJson<GraphRelationsResponse>(`/graph/relations?${params.toString()}`, { token });
+}
+
+export function getCrossPaperLinks(limit: number, minShared: number, token: string): Promise<CrossPaperLinksResponse> {
+  const params = new URLSearchParams({
+    limit: String(limit),
+    min_shared: String(minShared),
+  });
+  return requestJson<CrossPaperLinksResponse>(`/graph/cross-paper-links?${params.toString()}`, { token });
 }
 
 export function exportRdf(documentId: number, token: string): Promise<RdfExportResponse> {
