@@ -16,3 +16,4 @@ neo4j==5.23.1
 PyJWT==2.10.1
 celery==5.4.0
 prometheus-client==0.22.1
+ruff==0.14.3

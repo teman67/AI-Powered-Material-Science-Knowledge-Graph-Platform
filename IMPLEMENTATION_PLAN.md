@@ -23,7 +23,8 @@ This plan translates the product vision in Claude.md into an execution roadmap w
 - Completed in Phase 4 hardening (runtime): FastAPI lifespan-based startup initialization (deprecated startup event removed)
 - Completed in Phase 4 hardening (devops): Prometheus + Grafana services added to Docker Compose monitoring stack
 - Completed in Phase 4 hardening (devops): automated GHCR image publish workflow on main branch
-- Current focus: Phase 4 completion checklist (lint coverage)
+- Completed in Phase 4 hardening (devops): lint coverage automation in CI (backend Ruff + frontend ESLint)
+- Current focus: Phase 5 advanced capabilities backlog prioritization
 
 ## 1) Scope and Delivery Strategy
 
