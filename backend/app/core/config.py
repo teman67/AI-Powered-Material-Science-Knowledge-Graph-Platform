@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     chat_graph_candidate_pool: int = Field(default=60, ge=10, le=500)
 
     graph_enabled: bool = True
+    pmdcore_ontology_path: str = "app/ontologies/pmdcore.ttl"
 
     auth_jwt_secret: str = "change-this-in-production"
     auth_jwt_algorithm: str = "HS256"
