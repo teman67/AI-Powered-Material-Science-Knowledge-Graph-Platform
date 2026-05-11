@@ -98,6 +98,29 @@ export type CrossPaperExplorationResponse = {
   items: CrossPaperExplorationItem[];
 };
 
+export type CrossPaperRecommendationItem = {
+  source_document_id: number;
+  source_document_title: string | null;
+  target_document_id: number;
+  target_document_title: string | null;
+  shared_entity_count: number;
+  bridge_entities: string[];
+  score: number;
+};
+
+export type CrossPaperRecommendationEdge = {
+  source_document_id: number;
+  target_document_id: number;
+  shared_entity_count: number;
+  score: number;
+};
+
+export type CrossPaperRecommendationsResponse = {
+  query: string;
+  items: CrossPaperRecommendationItem[];
+  edges: CrossPaperRecommendationEdge[];
+};
+
 export type RdfExportResponse = {
   document_id: number;
   is_valid: boolean;
@@ -238,6 +261,22 @@ export function getCrossPaperExploration(
     params.set("query", query.trim());
   }
   return requestJson<CrossPaperExplorationResponse>(`/graph/cross-paper-explore/${documentId}?${params.toString()}`, { token });
+}
+
+export function getCrossPaperRecommendations(
+  query: string,
+  limit: number,
+  seedLimit: number,
+  minShared: number,
+  token: string,
+): Promise<CrossPaperRecommendationsResponse> {
+  const params = new URLSearchParams({
+    query,
+    limit: String(limit),
+    seed_limit: String(seedLimit),
+    min_shared: String(minShared),
+  });
+  return requestJson<CrossPaperRecommendationsResponse>(`/graph/cross-paper-recommendations?${params.toString()}`, { token });
 }
 
 export function exportRdf(documentId: number, token: string): Promise<RdfExportResponse> {

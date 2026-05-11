@@ -246,3 +246,113 @@ def test_cross_paper_exploration_ranks_by_query_intent() -> None:
         db.commit()
         db.close()
         _cleanup_user(email)
+
+
+def test_cross_paper_recommendations_requires_auth() -> None:
+    client = TestClient(app)
+    response = client.get("/graph/cross-paper-recommendations?query=MoS2")
+    assert response.status_code == 401
+
+
+def test_cross_paper_recommendations_returns_ranked_paths_and_edges() -> None:
+    email = "graph_reco_user@example.com"
+    _cleanup_user(email)
+
+    client = TestClient(app)
+    token = _register_and_login(client, email)
+
+    db = SessionLocal()
+    doc_ids: list[int] = []
+    entity_ids: list[int] = []
+    try:
+        doc_a = Document(file_path="/tmp/reco_a.pdf", status=DocumentStatus.processed.value, title="Synthesis Doc")
+        doc_b = Document(file_path="/tmp/reco_b.pdf", status=DocumentStatus.processed.value, title="Annealing Route")
+        doc_c = Document(file_path="/tmp/reco_c.pdf", status=DocumentStatus.processed.value, title="Property Study")
+        db.add_all([doc_a, doc_b, doc_c])
+        db.commit()
+        db.refresh(doc_a)
+        db.refresh(doc_b)
+        db.refresh(doc_c)
+        doc_ids.extend([doc_a.id, doc_b.id, doc_c.id])
+
+        entries = [
+            ExtractedEntity(
+                document_id=doc_a.id,
+                entity_type="material",
+                entity_value="MoS2",
+                ontology_mapping="pmd:Material",
+                confidence=0.96,
+            ),
+            ExtractedEntity(
+                document_id=doc_a.id,
+                entity_type="process",
+                entity_value="annealing",
+                ontology_mapping="pmd:Process",
+                confidence=0.90,
+            ),
+            ExtractedEntity(
+                document_id=doc_b.id,
+                entity_type="material",
+                entity_value="MoS2",
+                ontology_mapping="pmd:Material",
+                confidence=0.94,
+            ),
+            ExtractedEntity(
+                document_id=doc_b.id,
+                entity_type="process",
+                entity_value="annealing",
+                ontology_mapping="pmd:Process",
+                confidence=0.91,
+            ),
+            ExtractedEntity(
+                document_id=doc_b.id,
+                entity_type="application",
+                entity_value="sensor",
+                ontology_mapping="pmd:Application",
+                confidence=0.86,
+            ),
+            ExtractedEntity(
+                document_id=doc_c.id,
+                entity_type="material",
+                entity_value="MoS2",
+                ontology_mapping="pmd:Material",
+                confidence=0.92,
+            ),
+            ExtractedEntity(
+                document_id=doc_c.id,
+                entity_type="property",
+                entity_value="thermal conductivity",
+                ontology_mapping="pmd:Property",
+                confidence=0.87,
+            ),
+        ]
+        db.add_all(entries)
+        db.commit()
+        for entity in entries:
+            db.refresh(entity)
+            entity_ids.append(entity.id)
+
+        response = client.get(
+            "/graph/cross-paper-recommendations?query=How%20is%20MoS2%20synthesized&limit=10&seed_limit=3&min_shared=2",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["query"] == "How is MoS2 synthesized"
+        assert payload["items"]
+        assert payload["edges"]
+
+        top_item = payload["items"][0]
+        assert top_item["score"] >= payload["items"][-1]["score"]
+        assert top_item["source_document_id"] in doc_ids
+        assert top_item["target_document_id"] in doc_ids
+        assert any(entity.lower() == "annealing" for entity in top_item["bridge_entities"])
+    finally:
+        for entity_id in entity_ids:
+            db.execute(delete(ExtractedEntity).where(ExtractedEntity.id == entity_id))
+        for document_id in doc_ids:
+            db.execute(delete(Document).where(Document.id == document_id))
+        db.commit()
+        db.close()
+        _cleanup_user(email)

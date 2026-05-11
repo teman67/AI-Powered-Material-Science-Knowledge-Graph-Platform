@@ -176,6 +176,129 @@ def fetch_cross_paper_exploration(
     return ranked_items[:limit]
 
 
+def fetch_cross_paper_recommendations(
+    db: Session,
+    query_text: str,
+    limit: int = 20,
+    seed_limit: int = 5,
+    min_shared: int = 1,
+) -> dict[str, Any]:
+    rows = db.execute(
+        select(
+            ExtractedEntity.document_id,
+            ExtractedEntity.entity_type,
+            ExtractedEntity.entity_value,
+            ExtractedEntity.ontology_mapping,
+        ).where(ExtractedEntity.entity_type.in_(_LINKABLE_ENTITY_TYPES))
+    ).all()
+
+    if not rows:
+        return {"query": query_text, "items": [], "edges": []}
+
+    entities_by_document: dict[int, set[str]] = {}
+    key_to_display: dict[str, str] = {}
+
+    for document_id, entity_type, entity_value, ontology_mapping in rows:
+        normalized_value = _normalize_entity_value(str(entity_value))
+        if not normalized_value:
+            continue
+
+        entity_key = f"{str(ontology_mapping).lower()}|{str(entity_type).lower()}|{normalized_value}"
+        entities_by_document.setdefault(int(document_id), set()).add(entity_key)
+        key_to_display.setdefault(entity_key, str(entity_value).strip())
+
+    if len(entities_by_document) < 2:
+        return {"query": query_text, "items": [], "edges": []}
+
+    document_ids = sorted(entities_by_document.keys())
+    title_rows = db.execute(select(Document.id, Document.title).where(Document.id.in_(document_ids))).all()
+    title_by_document_id = {int(document_id): title for document_id, title in title_rows}
+
+    query_tokens = _tokenize_text(query_text)
+    if not query_tokens:
+        return {"query": query_text, "items": [], "edges": []}
+
+    query_relevance: dict[int, float] = {}
+    for document_id, entity_keys in entities_by_document.items():
+        entity_blob = " ".join(sorted({key_to_display[key] for key in entity_keys})).lower()
+        title_blob = (title_by_document_id.get(document_id) or "").lower()
+        lexical_overlap = sum(1 for token in query_tokens if token in entity_blob)
+        title_overlap = sum(1 for token in query_tokens if token in title_blob)
+        intent_boost = _query_intent_entity_type_boost(query_text=query_text, shared_keys=entity_keys)
+
+        score = (lexical_overlap * 0.8) + (title_overlap * 0.3) + intent_boost
+        if score > 0:
+            query_relevance[document_id] = score
+
+    if not query_relevance:
+        return {"query": query_text, "items": [], "edges": []}
+
+    seed_documents = [
+        document_id
+        for document_id, _score in sorted(query_relevance.items(), key=lambda item: item[1], reverse=True)[:seed_limit]
+    ]
+
+    recommendations: list[dict[str, Any]] = []
+    seen_pairs: set[tuple[int, int]] = set()
+
+    for source_document_id in seed_documents:
+        source_keys = entities_by_document[source_document_id]
+        for target_document_id, target_keys in entities_by_document.items():
+            if target_document_id == source_document_id:
+                continue
+            pair_key = (source_document_id, target_document_id)
+            if pair_key in seen_pairs:
+                continue
+
+            shared_keys = source_keys.intersection(target_keys)
+            if len(shared_keys) < min_shared:
+                continue
+
+            bridge_entities = sorted({key_to_display[key] for key in shared_keys})[:10]
+            shared_score = _score_cross_paper_candidate(
+                shared_keys=shared_keys,
+                bridge_entities=bridge_entities,
+                target_title=title_by_document_id.get(target_document_id),
+                query_text=query_text,
+            )
+            total_score = (
+                (query_relevance.get(source_document_id, 0.0) * 1.1)
+                + (query_relevance.get(target_document_id, 0.0) * 0.4)
+                + shared_score
+            )
+
+            seen_pairs.add(pair_key)
+            recommendations.append(
+                {
+                    "source_document_id": source_document_id,
+                    "source_document_title": title_by_document_id.get(source_document_id),
+                    "target_document_id": target_document_id,
+                    "target_document_title": title_by_document_id.get(target_document_id),
+                    "shared_entity_count": len(shared_keys),
+                    "bridge_entities": bridge_entities,
+                    "score": round(total_score, 3),
+                }
+            )
+
+    recommendations.sort(
+        key=lambda item: (
+            float(item["score"]),
+            int(item["shared_entity_count"]),
+            -int(item["source_document_id"]),
+            -int(item["target_document_id"]),
+        ),
+        reverse=True,
+    )
+
+    top_recommendations = recommendations[:limit]
+    edges = _recommendation_edges_from_items(top_recommendations)
+    return {
+        "query": query_text,
+        "items": top_recommendations,
+        "edges": edges,
+    }
+
+
 def ingest_document_entities_to_graph(
     document_id: int,
     document_title: str | None,
@@ -517,6 +640,28 @@ def _query_intent_entity_type_boost(query_text: str, shared_keys: set[str]) -> f
         boost += 0.9
 
     return boost
+
+
+def _recommendation_edges_from_items(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    edges_by_pair: dict[tuple[int, int], dict[str, Any]] = {}
+    for item in items:
+        source = int(item["source_document_id"])
+        target = int(item["target_document_id"])
+        pair = tuple(sorted((source, target)))
+        score = float(item["score"])
+
+        existing = edges_by_pair.get(pair)
+        if existing is None or score > float(existing["score"]):
+            edges_by_pair[pair] = {
+                "source_document_id": pair[0],
+                "target_document_id": pair[1],
+                "shared_entity_count": int(item["shared_entity_count"]),
+                "score": round(score, 3),
+            }
+
+    edges = list(edges_by_pair.values())
+    edges.sort(key=lambda edge: (float(edge["score"]), int(edge["shared_entity_count"])), reverse=True)
+    return edges
 
 
 def _merge_document_and_materials(tx: Any, document_id: int, document_title: str | None, materials: list[str]) -> None:

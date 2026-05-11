@@ -7,6 +7,9 @@ from app.api.schemas.graph import (
     CrossPaperExplorationResponse,
     CrossPaperLinkItem,
     CrossPaperLinksResponse,
+    CrossPaperRecommendationEdge,
+    CrossPaperRecommendationItem,
+    CrossPaperRecommendationsResponse,
     GraphMaterialItem,
     GraphMaterialsResponse,
     GraphRelationItem,
@@ -14,7 +17,13 @@ from app.api.schemas.graph import (
 )
 from app.db.session import get_db
 from app.models import User
-from app.services.graph_service import fetch_cross_paper_exploration, fetch_cross_paper_links, fetch_materials, fetch_relations
+from app.services.graph_service import (
+    fetch_cross_paper_exploration,
+    fetch_cross_paper_links,
+    fetch_cross_paper_recommendations,
+    fetch_materials,
+    fetch_relations,
+)
 
 router = APIRouter(prefix="/graph")
 
@@ -70,3 +79,27 @@ def get_cross_paper_exploration(
         query_text=query,
     )
     return CrossPaperExplorationResponse(items=[CrossPaperExplorationItem(**row) for row in rows])
+
+
+@router.get("/cross-paper-recommendations", response_model=CrossPaperRecommendationsResponse)
+def get_cross_paper_recommendations(
+    query: str = Query(min_length=2, max_length=500),
+    limit: int = Query(default=20, ge=1, le=200),
+    seed_limit: int = Query(default=5, ge=1, le=20),
+    min_shared: int = Query(default=1, ge=1, le=20),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> CrossPaperRecommendationsResponse:
+    _ = current_user
+    result = fetch_cross_paper_recommendations(
+        db=db,
+        query_text=query,
+        limit=limit,
+        seed_limit=seed_limit,
+        min_shared=min_shared,
+    )
+    return CrossPaperRecommendationsResponse(
+        query=str(result["query"]),
+        items=[CrossPaperRecommendationItem(**row) for row in result["items"]],
+        edges=[CrossPaperRecommendationEdge(**row) for row in result["edges"]],
+    )

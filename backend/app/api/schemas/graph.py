@@ -47,3 +47,26 @@ class CrossPaperExplorationItem(BaseModel):
 
 class CrossPaperExplorationResponse(BaseModel):
     items: list[CrossPaperExplorationItem]
+
+
+class CrossPaperRecommendationItem(BaseModel):
+    source_document_id: int
+    source_document_title: str | None
+    target_document_id: int
+    target_document_title: str | None
+    shared_entity_count: int
+    bridge_entities: list[str]
+    score: float
+
+
+class CrossPaperRecommendationEdge(BaseModel):
+    source_document_id: int
+    target_document_id: int
+    shared_entity_count: int
+    score: float
+
+
+class CrossPaperRecommendationsResponse(BaseModel):
+    query: str
+    items: list[CrossPaperRecommendationItem]
+    edges: list[CrossPaperRecommendationEdge]
