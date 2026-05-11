@@ -1,17 +1,88 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "../components/auth-provider";
 import { PlatformShell } from "../components/platform-shell";
-import { RdfExportResponse, exportRdf } from "../../lib/api";
+import { DocumentDetailResponse, RdfExportResponse, exportRdf, listDocuments } from "../../lib/api";
+
+function documentDisplayName(doc: DocumentDetailResponse): string {
+  const title = (doc.title || "").trim();
+  if (title) {
+    return title;
+  }
+
+  const leaf = doc.file_path.split(/[\\/]/).pop() || `Document ${doc.id}`;
+  return leaf.replace(/^[a-f0-9]{32}_/i, "");
+}
 
 export default function RdfPage() {
-  const { token } = useAuth();
+  const { token, ready } = useAuth();
   const [documentId, setDocumentId] = useState("");
+  const [documents, setDocuments] = useState<DocumentDetailResponse[]>([]);
   const [result, setResult] = useState<RdfExportResponse | null>(null);
   const [busy, setBusy] = useState(false);
+  const [loadingDocuments, setLoadingDocuments] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+
+  const selectedDocument = useMemo(() => {
+    const numericId = Number(documentId);
+    if (!numericId || Number.isNaN(numericId)) {
+      return null;
+    }
+    return documents.find((doc) => doc.id === numericId) || null;
+  }, [documentId, documents]);
+
+  useEffect(() => {
+    if (!ready) {
+      return;
+    }
+
+    if (!token) {
+      setDocuments([]);
+      setDocumentId("");
+      setResult(null);
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingDocuments(true);
+    listDocuments(200, token)
+      .then((response) => {
+        if (cancelled) {
+          return;
+        }
+
+        const items = [...response.items].sort((a, b) => b.id - a.id);
+        setDocuments(items);
+        if (items.length === 0) {
+          setDocumentId("");
+          return;
+        }
+
+        setDocumentId((current) => {
+          const exists = items.some((doc) => String(doc.id) === current);
+          return exists ? current : String(items[0].id);
+        });
+      })
+      .catch(() => {
+        if (cancelled) {
+          return;
+        }
+        setDocuments([]);
+        setDocumentId("");
+        setMessage("Could not load documents for RDF export.");
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoadingDocuments(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [ready, token]);
 
   async function handleFetch() {
     if (!token) {
@@ -21,7 +92,7 @@ export default function RdfPage() {
 
     const numericId = Number(documentId);
     if (!numericId || Number.isNaN(numericId)) {
-      setMessage("Provide a numeric document ID.");
+      setMessage("Select a document by name.");
       return;
     }
 
@@ -45,18 +116,28 @@ export default function RdfPage() {
       <section className="stagger">
         <article className="panel-card">
           <h2>Export RDF for Document</h2>
-          <div className="inline-form">
-            <input
-              type="number"
-              min={1}
+          <div className="inline-form rdf-inline-form">
+            <select
               value={documentId}
               onChange={(event) => setDocumentId(event.target.value)}
-              placeholder="Document ID"
-            />
-            <button type="button" onClick={handleFetch} disabled={!token || busy}>
+              disabled={!token || loadingDocuments || documents.length === 0}
+            >
+              {documents.length === 0 ? <option value="">No documents available</option> : null}
+              {documents.map((doc) => (
+                <option key={doc.id} value={String(doc.id)}>
+                  {documentDisplayName(doc).slice(0, 90)} ({doc.status})
+                </option>
+              ))}
+            </select>
+            <button type="button" onClick={handleFetch} disabled={!token || busy || !documentId}>
               {busy ? "Generating..." : "Export RDF"}
             </button>
           </div>
+          {selectedDocument ? (
+            <p className="info-line">
+              Selected: {documentDisplayName(selectedDocument)}
+            </p>
+          ) : null}
           {message ? <p className="info-line">{message}</p> : null}
         </article>
 

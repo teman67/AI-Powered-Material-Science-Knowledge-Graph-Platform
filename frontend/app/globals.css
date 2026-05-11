@@ -297,6 +297,13 @@ input {
   background: rgba(255, 255, 255, 0.88);
 }
 
+select {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.52rem 0.62rem;
+  background: rgba(255, 255, 255, 0.88);
+}
+
 textarea {
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -435,6 +442,15 @@ button.danger:not(:disabled):hover {
 
 .inline-form.three-col {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.rdf-inline-form {
+  grid-template-columns: minmax(0, 1.7fr) auto;
+}
+
+.rdf-inline-form select {
+  min-width: 320px;
+  width: 100%;
 }
 
 .table-wrap {
