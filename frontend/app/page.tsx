@@ -4,7 +4,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 import { PlatformShell } from "./components/platform-shell";
 import { useAuth } from "./components/auth-provider";
-import { DocumentDetailResponse, getDocument, listDocuments, uploadDocument } from "../lib/api";
+import { DocumentDetailResponse, deleteDocument, getDocument, listDocuments, uploadDocument } from "../lib/api";
 
 function sortDocs(items: DocumentDetailResponse[]) {
   return [...items].sort((a, b) => b.id - a.id);
@@ -16,6 +16,7 @@ export default function Home() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [lookupId, setLookupId] = useState("");
   const [busy, setBusy] = useState(false);
+  const [deletingDocumentId, setDeletingDocumentId] = useState<number | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
   const stats = useMemo(() => {
@@ -114,6 +115,32 @@ export default function Home() {
       setMessage(error instanceof Error ? error.message : "Could not fetch document details.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function handleDeleteDocument(documentId: number) {
+    if (!token) {
+      setMessage("Authenticate first to delete documents.");
+      return;
+    }
+
+    const approved = window.confirm(`Delete document ${documentId}? This removes chunks, RDF, extracted entities, and graph references.`);
+    if (!approved) {
+      return;
+    }
+
+    setDeletingDocumentId(documentId);
+    setMessage(null);
+    try {
+      const result = await deleteDocument(documentId, token);
+      setDocs((current) => current.filter((doc) => doc.id !== documentId));
+      const fileState = result.file_deleted ? "file removed" : "file already missing";
+      const graphState = result.graph_cleanup_applied ? "graph cleaned" : "graph cleanup skipped";
+      setMessage(`Deleted document ${documentId} (${fileState}, ${graphState}).`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Failed to delete document.");
+    } finally {
+      setDeletingDocumentId(null);
     }
   }
 
@@ -238,12 +265,13 @@ export default function Home() {
                   <th>Status</th>
                   <th>Chunks</th>
                   <th>Uploaded</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {docs.length === 0 ? (
                   <tr>
-                    <td colSpan={5}>No tracked documents yet. Upload or lookup by ID.</td>
+                    <td colSpan={6}>No tracked documents yet. Upload or lookup by ID.</td>
                   </tr>
                 ) : (
                   docs.map((doc) => (
@@ -255,6 +283,18 @@ export default function Home() {
                       </td>
                       <td>{doc.chunk_count}</td>
                       <td>{new Date(doc.upload_date).toLocaleString()}</td>
+                      <td>
+                        <div className="row-actions">
+                          <button
+                            type="button"
+                            className="danger"
+                            disabled={!token || busy || deletingDocumentId === doc.id}
+                            onClick={() => handleDeleteDocument(doc.id)}
+                          >
+                            {deletingDocumentId === doc.id ? "Deleting..." : "Delete"}
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))
                 )}

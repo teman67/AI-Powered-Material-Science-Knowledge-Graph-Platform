@@ -41,6 +41,18 @@ def test_ingest_returns_counts_without_driver(monkeypatch) -> None:
     assert summary["applications"] == 1
 
 
+def test_remove_document_from_graph_returns_not_applied_without_driver(monkeypatch) -> None:
+    monkeypatch.setattr(graph_service, "GraphDatabase", None)
+    monkeypatch.setattr(graph_service, "_DRIVER", None)
+    monkeypatch.setattr(graph_service, "_DRIVER_INIT_FAILED", False)
+
+    result = graph_service.remove_document_from_graph(document_id=42)
+
+    assert result["applied"] is False
+    assert result["nodes_deleted"] == 0
+    assert result["relationships_deleted"] == 0
+
+
 def test_rank_graph_facts_prioritizes_property_intent() -> None:
     facts = [
         graph_service.GraphFact(source="MoS2", relation="USED_IN", target="nanoelectronics"),

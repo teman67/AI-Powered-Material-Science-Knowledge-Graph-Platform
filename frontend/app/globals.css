@@ -322,6 +322,23 @@ textarea:focus {
   flex-wrap: wrap;
 }
 
+.row-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+button.danger {
+  background: rgba(159, 44, 40, 0.12);
+  color: #8b2c2b;
+  border-color: rgba(159, 44, 40, 0.28);
+}
+
+button.danger:not(:disabled):hover {
+  background: rgba(159, 44, 40, 0.2);
+  color: #7a1f1f;
+  filter: none;
+}
+
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));

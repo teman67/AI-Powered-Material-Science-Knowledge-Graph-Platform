@@ -97,6 +97,31 @@ def fetch_cross_paper_links(db: Session, limit: int = 50, min_shared: int = 2) -
     return links[:limit]
 
 
+def remove_document_from_graph(document_id: int) -> dict[str, Any]:
+    driver = _get_driver()
+    if driver is None:
+        return {
+            "applied": False,
+            "nodes_deleted": 0,
+            "relationships_deleted": 0,
+        }
+
+    try:
+        with driver.session() as session:
+            summary = session.execute_write(_delete_document_graph_nodes, document_id)
+        return {
+            "applied": True,
+            "nodes_deleted": summary["nodes_deleted"],
+            "relationships_deleted": summary["relationships_deleted"],
+        }
+    except Exception:
+        return {
+            "applied": False,
+            "nodes_deleted": 0,
+            "relationships_deleted": 0,
+        }
+
+
 def fetch_cross_paper_exploration(
     db: Session,
     source_document_id: int,
@@ -685,6 +710,49 @@ def _merge_document_and_materials(tx: Any, document_id: int, document_title: str
             material=material,
             document_id=document_id,
         )
+
+
+def _delete_document_graph_nodes(tx: Any, document_id: int) -> dict[str, int]:
+    summary_a = tx.run(
+        """
+        MATCH (d:Document {id: $document_id})
+        DETACH DELETE d
+        """,
+        document_id=document_id,
+    ).consume()
+
+    summary_b = tx.run(
+        """
+        MATCH (m:Material)
+        WHERE NOT EXISTS { MATCH (:Document)-[:MENTIONS]->(m) }
+        DETACH DELETE m
+        """
+    ).consume()
+
+    summary_c = tx.run(
+        """
+        MATCH (n)
+        WHERE (n:Property OR n:Process OR n:Application)
+          AND NOT (n)--()
+        DETACH DELETE n
+        """
+    ).consume()
+
+    nodes_deleted = (
+        int(summary_a.counters.nodes_deleted)
+        + int(summary_b.counters.nodes_deleted)
+        + int(summary_c.counters.nodes_deleted)
+    )
+    relationships_deleted = (
+        int(summary_a.counters.relationships_deleted)
+        + int(summary_b.counters.relationships_deleted)
+        + int(summary_c.counters.relationships_deleted)
+    )
+
+    return {
+        "nodes_deleted": nodes_deleted,
+        "relationships_deleted": relationships_deleted,
+    }
 
 
 def _merge_related_nodes(

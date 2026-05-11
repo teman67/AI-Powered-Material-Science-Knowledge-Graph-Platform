@@ -1,14 +1,20 @@
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.api.dependencies.auth import get_current_user
-from app.api.schemas.documents import DocumentDetailResponse, DocumentListResponse, DocumentUploadResponse
+from app.api.schemas.documents import (
+    DocumentDeleteResponse,
+    DocumentDetailResponse,
+    DocumentListResponse,
+    DocumentUploadResponse,
+)
 from app.core.config import get_settings
 from app.db.session import get_db
-from app.models import Chunk, Document, DocumentStatus, User
+from app.models import Chunk, Document, DocumentStatus, ExtractedEntity, RdfArtifact, User
 from app.services.document_pipeline import process_document_ingestion
-from app.services.file_storage import save_pdf_bytes
+from app.services.file_storage import delete_file_if_exists, save_pdf_bytes
+from app.services.graph_service import remove_document_from_graph
 from app.tasks.dispatch import enqueue_document_processing
 
 router = APIRouter(prefix="/documents")
@@ -122,5 +128,33 @@ def get_document(
         file_path=document.file_path,
         upload_date=document.upload_date,
         chunk_count=int(chunk_count),
+    )
+
+
+@router.delete("/{document_id}", response_model=DocumentDeleteResponse)
+def delete_document(
+    document_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> DocumentDeleteResponse:
+    _ = current_user
+    document = db.get(Document, document_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found.")
+
+    graph_cleanup = remove_document_from_graph(document_id=document_id)
+
+    db.execute(delete(Chunk).where(Chunk.document_id == document_id))
+    db.execute(delete(ExtractedEntity).where(ExtractedEntity.document_id == document_id))
+    db.execute(delete(RdfArtifact).where(RdfArtifact.document_id == document_id))
+    db.execute(delete(Document).where(Document.id == document_id))
+    db.commit()
+
+    file_deleted = delete_file_if_exists(document.file_path)
+
+    return DocumentDeleteResponse(
+        document_id=document_id,
+        file_deleted=file_deleted,
+        graph_cleanup_applied=bool(graph_cleanup.get("applied", False)),
     )
 

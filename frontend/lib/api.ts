@@ -1,7 +1,7 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
 type RequestOptions = {
-  method?: "GET" | "POST";
+  method?: "GET" | "POST" | "DELETE";
   token?: string | null;
   body?: Record<string, unknown> | FormData;
 };
@@ -48,6 +48,12 @@ export type DocumentDetailResponse = {
 
 export type DocumentListResponse = {
   items: DocumentDetailResponse[];
+};
+
+export type DocumentDeleteResponse = {
+  document_id: number;
+  file_deleted: boolean;
+  graph_cleanup_applied: boolean;
 };
 
 export type GraphMaterialItem = {
@@ -224,6 +230,13 @@ export function getDocument(documentId: number, token: string): Promise<Document
 
 export function listDocuments(limit: number, token: string): Promise<DocumentListResponse> {
   return requestJson<DocumentListResponse>(`/documents?limit=${limit}`, { token });
+}
+
+export function deleteDocument(documentId: number, token: string): Promise<DocumentDeleteResponse> {
+  return requestJson<DocumentDeleteResponse>(`/documents/${documentId}`, {
+    method: "DELETE",
+    token,
+  });
 }
 
 export function getGraphMaterials(limit: number, token: string): Promise<GraphMaterialsResponse> {

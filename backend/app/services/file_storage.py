@@ -13,3 +13,18 @@ def save_pdf_bytes(filename: str, payload: bytes) -> Path:
     output_path = upload_dir / f"{uuid4().hex}_{safe_name}"
     output_path.write_bytes(payload)
     return output_path
+
+
+def delete_file_if_exists(file_path: str) -> bool:
+    target = Path(file_path)
+    if not target.is_absolute():
+        target = (Path.cwd() / target).resolve()
+
+    if not target.exists():
+        return False
+
+    try:
+        target.unlink()
+        return True
+    except OSError:
+        return False

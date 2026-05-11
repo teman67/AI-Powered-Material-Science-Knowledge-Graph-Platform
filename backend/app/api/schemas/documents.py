@@ -21,3 +21,9 @@ class DocumentDetailResponse(BaseModel):
 
 class DocumentListResponse(BaseModel):
     items: list[DocumentDetailResponse]
+
+
+class DocumentDeleteResponse(BaseModel):
+    document_id: int
+    file_deleted: bool
+    graph_cleanup_applied: bool
