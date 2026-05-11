@@ -149,3 +149,26 @@ def test_protected_chat_endpoint_accepts_valid_bearer_token() -> None:
     assert "contexts" in payload
 
     _cleanup_user(email)
+
+
+def test_auth_me_requires_auth() -> None:
+    client = TestClient(app)
+    response = client.get("/auth/me")
+    assert response.status_code == 401
+
+
+def test_auth_me_returns_current_user() -> None:
+    email = "auth_me_user@example.com"
+    _cleanup_user(email)
+
+    client = TestClient(app)
+    token = _register_and_login(client, email)
+
+    response = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 200
+
+    payload = response.json()
+    assert payload["email"] == email
+    assert payload["id"] > 0
+
+    _cleanup_user(email)

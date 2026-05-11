@@ -8,7 +8,7 @@ import { useAuth } from "./auth-provider";
 type Mode = "login" | "register";
 
 export function AuthPanel() {
-  const { token, setToken, ready } = useAuth();
+  const { token, setToken, ready, userEmail, setUserEmail } = useAuth();
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
@@ -20,9 +20,10 @@ export function AuthPanel() {
   const authenticated = Boolean(token);
   const wrapRef = useRef<HTMLDivElement>(null);
 
+  const displayEmail = userEmail || email;
   const initials = useMemo(() => {
-    return email ? email[0].toUpperCase() : "?";
-  }, [email]);
+    return displayEmail ? displayEmail[0].toUpperCase() : "?";
+  }, [displayEmail]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -50,6 +51,7 @@ export function AuthPanel() {
         await registerUser({ email, password, full_name: fullName || undefined });
       }
       const loginResponse = await loginUser({ email, password });
+      setUserEmail(email);
       setToken(loginResponse.access_token);
       setMessage("Authenticated successfully.");
       setMessageTone("success");
@@ -80,7 +82,7 @@ export function AuthPanel() {
       <div className="auth-topbar-user">
         <span className="auth-topbar-live-dot" />
         <span className="auth-topbar-avatar">{initials}</span>
-        <span className="auth-topbar-email">{email || "Researcher"}</span>
+        <span className="auth-topbar-email">{displayEmail || "Researcher"}</span>
         <button type="button" className="auth-topbar-signout" onClick={handleLogout}>
           Sign Out
         </button>

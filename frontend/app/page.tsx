@@ -64,8 +64,12 @@ export default function Home() {
   }
 
   useEffect(() => {
-    if (!ready || !token) {
+    if (!ready) {
       return;
+    }
+
+    if (!token) {
+      setMessage(null);
     }
 
     loadDocuments().catch(() => {

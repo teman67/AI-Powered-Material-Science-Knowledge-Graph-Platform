@@ -214,6 +214,10 @@ export function loginUser(payload: LoginRequest): Promise<TokenResponse> {
   });
 }
 
+export function getCurrentUser(token: string): Promise<UserResponse> {
+  return requestJson<UserResponse>("/auth/me", { token });
+}
+
 export function uploadDocument(file: File, token: string): Promise<DocumentUploadResponse> {
   const form = new FormData();
   form.append("file", file);
