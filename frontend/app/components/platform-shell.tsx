@@ -18,25 +18,28 @@ export function PlatformShell({ title, subtitle, children }: { title: string; su
 
   return (
     <main className="platform-page fade-in">
-      <section className="top-shell">
-        <div>
-          <p className="eyebrow">Productization Phase 4</p>
-          <h1>{title}</h1>
+      <header className="top-shell">
+        <div className="top-shell-left">
+          <div className="brand-pill">
+            <span className="brand-pill-dot" />
+            Material Science Knowledge Platform
+          </div>
+          <h1 className="shell-title">{title}</h1>
           <p className="subtitle">{subtitle}</p>
         </div>
-        <nav className="nav-row" aria-label="Primary">
-          {links.map((link) => (
-            <Link key={link.href} href={link.href} className={pathname === link.href ? "active" : ""}>
-              {link.label}
-            </Link>
-          ))}
-        </nav>
-      </section>
+        <div className="top-shell-right">
+          <nav className="nav-row" aria-label="Primary">
+            {links.map((link) => (
+              <Link key={link.href} href={link.href} className={pathname === link.href ? "active" : ""}>
+                {link.label}
+              </Link>
+            ))}
+          </nav>
+          <AuthPanel />
+        </div>
+      </header>
 
-      <section className="content-grid">
-        <div className="content-panel">{children}</div>
-        <AuthPanel />
-      </section>
+      <div className="content-panel full-width">{children}</div>
     </main>
   );
 }
