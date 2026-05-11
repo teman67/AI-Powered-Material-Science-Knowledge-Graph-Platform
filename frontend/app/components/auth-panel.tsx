@@ -15,16 +15,19 @@ export function AuthPanel() {
   const [fullName, setFullName] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [messageTone, setMessageTone] = useState<"neutral" | "success" | "error">("neutral");
+  const authenticated = Boolean(token);
   const tokenPreview = useMemo(() => {
     if (!token) {
       return "Not authenticated";
     }
-    return `${token.slice(0, 14)}...`;
+    return `${token.slice(0, 12)}...${token.slice(-10)}`;
   }, [token]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage(null);
+    setMessageTone("neutral");
     setBusy(true);
     try {
       if (mode === "register") {
@@ -38,8 +41,10 @@ export function AuthPanel() {
       const loginResponse = await loginUser({ email, password });
       setToken(loginResponse.access_token);
       setMessage("Authenticated with backend.");
+      setMessageTone("success");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Authentication failed.");
+      setMessageTone("error");
     } finally {
       setBusy(false);
     }
@@ -50,13 +55,25 @@ export function AuthPanel() {
   }
 
   return (
-    <section className="auth-panel">
+    <section className="auth-panel auth-panel-modern">
       <div className="auth-header-row">
-        <h2>Secure Session</h2>
-        <span className={`status-badge ${token ? "status-ok" : "status-warn"}`}>{token ? "Connected" : "No token"}</span>
+        <div>
+          <p className="auth-eyebrow">Identity Gateway</p>
+          <h2>Secure Session</h2>
+        </div>
+        <span className={`status-badge ${token ? "status-ok" : "status-warn"}`}>{token ? "Connected" : "Guest"}</span>
       </div>
 
-      <p className="auth-note">Token preview: {tokenPreview}</p>
+      <div className="session-card">
+        <p className="auth-note">Token fingerprint</p>
+        <p className="token-preview">{tokenPreview}</p>
+      </div>
+
+      <p className="auth-note">
+        {authenticated
+          ? "Your session token is active. You can continue securely or switch accounts."
+          : "Sign in to unlock upload, chat, graph, and RDF endpoints."}
+      </p>
 
       <div className="mode-switch">
         <button
@@ -117,17 +134,19 @@ export function AuthPanel() {
           <button
             type="button"
             className="secondary"
+            disabled={!token}
             onClick={() => {
               setToken(null);
               setMessage("Session token removed.");
+              setMessageTone("neutral");
             }}
           >
-            Sign out
+            Logout
           </button>
         </div>
       </form>
 
-      {message ? <p className="auth-note">{message}</p> : null}
+      {message ? <p className={`auth-note auth-feedback auth-feedback-${messageTone}`}>{message}</p> : null}
     </section>
   );
 }

@@ -27,6 +27,20 @@ export default function Home() {
     return { total, processed, processing, failed, chunks };
   }, [docs]);
 
+  const completionRate = useMemo(() => {
+    if (stats.total === 0) {
+      return 0;
+    }
+    return Math.round((stats.processed / stats.total) * 100);
+  }, [stats.processed, stats.total]);
+
+  const failureRate = useMemo(() => {
+    if (stats.total === 0) {
+      return 0;
+    }
+    return Math.round((stats.failed / stats.total) * 100);
+  }, [stats.failed, stats.total]);
+
   const loadDocuments = useCallback(async () => {
     if (!token) {
       setDocs([]);
@@ -109,6 +123,30 @@ export default function Home() {
       subtitle="Upload papers, track ingestion state, and monitor extraction health against secured backend APIs."
     >
       <section className="stagger">
+        <article className="panel-card dashboard-hero">
+          <div className="dashboard-hero-main">
+            <p className="eyebrow">Pipeline Control Room</p>
+            <h2>Material Paper Ingestion Hub</h2>
+            <p className="muted">
+              Keep the ingestion queue healthy, follow processing outcomes, and refresh any document state in one place.
+            </p>
+          </div>
+          <div className="dashboard-hero-side">
+            <div className="dashboard-metric">
+              <span>Completion Rate</span>
+              <strong>{completionRate}%</strong>
+            </div>
+            <div className="dashboard-metric">
+              <span>Failure Rate</span>
+              <strong>{failureRate}%</strong>
+            </div>
+            <div className="dashboard-metric">
+              <span>Chunk Footprint</span>
+              <strong>{stats.chunks}</strong>
+            </div>
+          </div>
+        </article>
+
         <div className="stats-grid">
           <article className="stat-card">
             <h3>{stats.total}</h3>
@@ -132,35 +170,39 @@ export default function Home() {
           </article>
         </div>
 
-        <article className="panel-card">
-          <h2>Upload PDF</h2>
-          <form className="inline-form" onSubmit={handleUpload}>
-            <input
-              type="file"
-              accept="application/pdf"
-              onChange={(event) => setSelectedFile(event.target.files?.[0] || null)}
-            />
-            <button type="submit" disabled={!ready || !token || busy || !selectedFile}>
-              {busy ? "Uploading..." : "Upload Document"}
-            </button>
-          </form>
-        </article>
+        <div className="action-grid">
+          <article className="panel-card">
+            <h2>Upload PDF</h2>
+            <form className="inline-form" onSubmit={handleUpload}>
+              <input
+                type="file"
+                accept="application/pdf"
+                onChange={(event) => setSelectedFile(event.target.files?.[0] || null)}
+              />
+              <button type="submit" disabled={!ready || !token || busy || !selectedFile}>
+                {busy ? "Uploading..." : "Upload Document"}
+              </button>
+            </form>
+            <p className="muted">{selectedFile ? `Selected: ${selectedFile.name}` : "Choose a materials-science PDF to start extraction."}</p>
+          </article>
 
-        <article className="panel-card">
-          <h2>Track Existing Document</h2>
-          <div className="inline-form">
-            <input
-              type="number"
-              min={1}
-              value={lookupId}
-              onChange={(event) => setLookupId(event.target.value)}
-              placeholder="Document ID"
-            />
-            <button type="button" onClick={handleLookup} disabled={!ready || !token || busy}>
-              Refresh by ID
-            </button>
-          </div>
-        </article>
+          <article className="panel-card">
+            <h2>Track Existing Document</h2>
+            <div className="inline-form">
+              <input
+                type="number"
+                min={1}
+                value={lookupId}
+                onChange={(event) => setLookupId(event.target.value)}
+                placeholder="Document ID"
+              />
+              <button type="button" onClick={handleLookup} disabled={!ready || !token || busy}>
+                Refresh by ID
+              </button>
+            </div>
+            <p className="muted">Quickly sync one document without refreshing the full dashboard table.</p>
+          </article>
+        </div>
 
         {message ? <p className="info-line">{message}</p> : null}
 
